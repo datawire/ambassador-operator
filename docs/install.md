@@ -6,7 +6,7 @@ Firstly, you must install the Ambassador Operator:
 
 - Load the Ambassador Operator CRD with the following command:
   ```shell script
-  $ kubectl apply -f https://github.com/datawire/ambassador-operator/releases/latest/download/ambassador-operator-crds.yaml  
+  $ kubectl apply -f https://github.com/datawire/ambassador-operator/releases/latest/download/ambassador-operator-crds.yaml
   ```
 - Install the Ambassador Operator in the `ambassador` namespace with the following command:
   ```shell script
@@ -37,14 +37,14 @@ can share their configurations with the community. To install from this site:
 
 ## Install via Helm Chart
 
-You can also install the AES Operator from a Helm Chart. 
+You can also install the AES Operator from a Helm Chart.
 
 - Install Helm 3
 - Add this Helm repository to your Helm client
   ```shell script
   helm repo add datawire https://getambassador.io
   ```
-- Run the following command: 
+- Run the following command:
   ```shell script
   $ helm install stable/ambassador-operator
   ```
@@ -53,5 +53,3 @@ You can also install the AES Operator from a Helm Chart.
   namespace for easy upgrades).
 - Once the new Operator is working, create a new `AmbasasadorInstallation` _Custom Resource_ named `ambassador`
   as described [here](using.md).
-
-
