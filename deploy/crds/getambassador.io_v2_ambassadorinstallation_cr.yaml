@@ -1,0 +1,8 @@
+apiVersion: getambassador.io/v2
+kind: AmbassadorInstallation
+metadata:
+  name: ambassador
+spec:
+  # Will install the latest version
+  version: "*"
+  helmRepo: "https://www.getambassador.io"

@@ -1,0 +1,3 @@
+#!/bin/bash
+
+# script for publishing things, like the manifests and so on...

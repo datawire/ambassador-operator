@@ -1,0 +1,12 @@
+# install with:
+#
+# kubectl create namespace ambassador
+# kubectl apply -n ambassador -f cr-0.86.1.yaml
+#
+apiVersion: getambassador.io/v2
+kind: AmbassadorInstallation
+metadata:
+  name: ambassador
+spec:
+  version: 0.86.1
+

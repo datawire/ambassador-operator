@@ -1,0 +1,16 @@
+---
+apiVersion: getambassador.io/v2
+kind: AmbassadorInstallation
+metadata:
+  name: ambassador-2
+spec:
+  # Will install the latest version
+  version: "*"
+---
+apiVersion: getambassador.io/v2
+kind: AmbassadorInstallation
+metadata:
+  name: ambassador-3
+spec:
+  # Will install the latest version
+  version: "*"

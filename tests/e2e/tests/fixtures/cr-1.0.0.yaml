@@ -1,0 +1,13 @@
+# install with:
+#
+# kubectl create namespace ambassador
+# kubectl apply -n ambassador -f cr-1.0.0.yaml
+#
+apiVersion: getambassador.io/v2
+kind: AmbassadorInstallation
+metadata:
+  name: ambassador
+spec:
+  baseImage: quay.io/datawire/aes:1.0.0
+ 
+

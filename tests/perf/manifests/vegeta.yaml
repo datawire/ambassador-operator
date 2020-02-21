@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vegeta
+spec:
+  selector:
+    matchLabels:
+      app: vegeta
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: vegeta
+    spec:
+      securityContext:
+        sysctls:
+          # https://github.com/kubernetes/kubernetes/pull/54896
+          #- name: net.core.somaxconn
+          #  value: "65535"
+          - name: net.ipv4.ip_local_port_range
+            value: "1024 65535"
+      restartPolicy: Always
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    # pod anti-affinity with Ambassador, the backend and other vegeta pods
+                    - key: app
+                      operator: In
+                      values:
+                        - ambassador
+                        - vegeta
+                        - echo-a
+                        - backend
+                    # other ways to recognize Ambassador
+                    - key: app.kubernetes.io/instance
+                      operator: In
+                      values:
+                        - ambassador
+                    - key: app.kubernetes.io/name
+                      operator: In
+                      values:
+                        - ambassador
+                    - key: app.kubernetes.io/part-of
+                      operator: In
+                      values:
+                        - ambassador
+                    - key: service
+                      operator: In
+                      values:
+                        - ambassador
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: vegeta
+          image: peterevans/vegeta:6.7
+          imagePullPolicy: Always
+          command: ["/bin/sh"]
+          args: ["-c", "while /bin/true ; do sleep 100000 ; done ; "]
+          ports:
+            - containerPort: 8080
+
+# run with something like:
+# sh -c  "echo 'GET https://www.example.com' | vegeta attack -rate=10 -duration=30s | tee results.bin | vegeta report"
