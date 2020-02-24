@@ -12,6 +12,7 @@ env:
     - GO111MODULE=on
     - GO15VENDOREXPERIMENT=1
     - PUSH_CHART="true"
+    - GKE_PERF_REPORT_BUCKET="performance-reports"
 
 cache:
   directories:
@@ -28,10 +29,11 @@ install:
 
 jobs:
   include:
-    # stage 1: lint, build and unit-tests
-    - stage: Build, lint and unit tests
-      name: "Build, lint and unit tests"
-      script: make ci/check-format-gen ci/lint ci/build ci/test
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#    # stage 1: lint, build and unit-tests
+#    - stage: Build, lint and unit tests
+#      name: "Build, lint and unit tests"
+#      script: make ci/check-format-gen ci/lint ci/build ci/test
 
     # stage 2: end-to-end tests in multiple clouds
     # see the ci/infra/providers/CREDENTIALS.md for details on the credentials
@@ -39,26 +41,47 @@ jobs:
       name: "e2e tests in Google Cloud (GKE)"
       if: type = cron OR tag IS present
       env: CLUSTER_PROVIDER="gke" CLUSTER_REUSE=1
+      before_script: export PATH=$HOME/google-cloud-sdk/bin:$PATH
       script: make ci/cluster-setup ci/e2e
+      after_script: make ci/cluster-cleanup
 
     - name: "e2e tests in Azure (AKS)"
       if: type = cron OR tag IS present
       env: CLUSTER_PROVIDER="azure" CLUSTER_REUSE=1
       script: make ci/cluster-setup ci/e2e
+      after_script: make ci/cluster-cleanup
 
-    - name: "e2e tests in a local (1 node) Kubernetes cluster (k3d)"
-      env: CLUSTER_PROVIDER="k3d"
-      script: make ci/cluster-setup ci/e2e
+#!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#    - name: "e2e tests in a local (1 node) Kubernetes cluster (k3d)"
+#      env: CLUSTER_PROVIDER="k3d"
+#      script: make ci/cluster-setup ci/e2e
+#      after_script: make ci/cluster-cleanup
 
-    # stage 3: publish artifacts
+    # stage 3: run performance tests in some public clouds
+    - stage: Performance tests
+      #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! if: type = cron
+      name: "Performance tests (in GKE)"
+      env: CLUSTER_PROVIDER="gke"
+      # run the performance report
+      before_script: export PATH=$HOME/google-cloud-sdk/bin:$PATH
+      script: make ci/cluster-setup ci/perf-report
+      after_script: make ci/cluster-cleanup
+      # ... and then publish the report
+      deploy:
+        - provider: script
+          on:
+            all_branches: true
+          script: make ci/publish-perf-report
+          skip_cleanup: true
+
+    # stage 4: publish artifacts
     - stage: Publish artifacts
       if: tag IS present
       name: "Publish artifacts"
-      env: AMB_OPER_TAG="$TRAVIS_TAG"
+      env: AMB_OPER_IMAGE_TAG="$TRAVIS_TAG"
 
       # generate all the artifacts that will be published by the "deploy"
-      before_deploy:
-        - make ci/release
+      script: make ci/release
 
       # ... and then publish those artifacts, docs, push images, etc.
       deploy:
@@ -72,7 +95,7 @@ jobs:
           file_glob: true
           file: build/artifacts/*
           skip_cleanup: true
-        # publish docker images
+        # publish docker images to Quay.io
         # NOTE: make sure DOCKER_USERNAME/DOCKER_PASSWORD have values for a bot
         #       (from https://quay.io/repository/datawire/ambassador-operator?tab=settings)
         - provider: script

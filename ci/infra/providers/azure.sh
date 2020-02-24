@@ -241,6 +241,20 @@ cleanup)
 	;;
 
 #
+# login
+#
+login)
+	az_login
+	;;
+
+#
+# logout
+#
+logout)
+	az_logout
+	;;
+
+#
 # create and destroy tyhe cluster
 #
 create)

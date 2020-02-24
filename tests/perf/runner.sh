@@ -27,6 +27,12 @@ REPLICAS_COUNT=${NUM_REPLICAS:-1}
 LATENCY_RATES=${LAT_RATES:-100}
 LATENCY_DURATION="30s"
 LATENCY_REPORTS_DIR="/tmp"
+LATENCY_REPORTS_INDEX=
+
+# the templates
+LATENCY_REPORTS_PREFIX="report"
+LATENCY_REPORTS_LINK=
+export LATENCY_REPORTS_LINK
 
 # the backend manifests
 MANIF_BACKEND="$runner_sh_dir/manifests/backend.yaml"
@@ -59,6 +65,20 @@ export CLUSTER_NAME
 # the Go script for waiting for URLs
 EXE_WAIT_MULTI_URL="$runner_sh_dir/scripts/wait-multi-url.go"
 
+# the reports index generator
+EXE_REPORTS_INDEX="$runner_sh_dir/scripts/gen-index.sh"
+
+# manifest to load for enabling endpoints resolver
+MANIF_ENDPOINT_RES=$(
+	cat <<EOF
+---
+apiVersion: getambassador.io/v2
+kind: KubernetesEndpointResolver
+metadata:
+  name: endpoint
+EOF
+)
+
 ########################################################################################################################
 # utils
 ########################################################################################################################
@@ -86,7 +106,12 @@ get_test_configuration_str() {
 }
 
 get_cluster_machine_short() {
-	echo "$1" | sed -e 's/Standard//g' | tr '_' '-'
+	local machine="$1"
+	if [ -z "$machine" ]; then
+		echo "default"
+	else
+		echo "$1" | sed -e 's/Standard//g' | tr '_' '-'
+	fi
 }
 
 ########################################################################################################################
@@ -110,8 +135,8 @@ bench_cleanup() {
 	kubectl delete hosts -n default --selector=generated=true --wait=true
 	passed "... mappings/hosts removed."
 
-	info "Removing vegeta..."
-	kubectl delete --wait=true -f $MANIF_VEGETA
+	info "Removing any existing vegeta..."
+	kubectl delete --wait=true -f "$MANIF_VEGETA" 2>/dev/null
 	passed "... vegeta removed."
 
 	#info "Restarting Ambassador"
@@ -135,7 +160,7 @@ bench_prepare() {
 	wait_deploy "echo-b" || return 1
 
 	info "Generating and applying $MAPPINGS_COUNT mappings without a backing upstream (void)"
-	./scripts/mappings.py --count "$MAPPINGS_COUNT" --target "$target" |
+	$runner_sh_dir/scripts/mappings.py --count "$MAPPINGS_COUNT" --target "$target" |
 		kubectl apply -f - || abort "could not create mappings"
 	passed "... $MAPPINGS_COUNT mappings applied."
 
@@ -143,7 +168,7 @@ bench_prepare() {
 	gen_initial_host "$aes_host" | kubectl apply -f - || abort "could not create hosts"
 
 	info "Generating and applying $HOSTS_COUNT hosts"
-	./scripts/hosts.py --count "$HOSTS_COUNT" --hostname "$aes_host" |
+	$runner_sh_dir/scripts/hosts.py --count "$HOSTS_COUNT" --hostname "$aes_host" |
 		kubectl apply -f - || abort "could not create hosts"
 	passed "... $HOSTS_COUNT hosts applied."
 }
@@ -169,7 +194,7 @@ bench_reconf_latency() {
 
 	info "Sleeping for $CALM_DOWN_TIME secs until the system calms down..." && sleep $CALM_DOWN_TIME
 	info "Changing mapping $MAPPINGS_COUNT to 'echo-a' and waiting for $url to return 200"
-	./scripts/mappings.py \
+	$runner_sh_dir/scripts/mappings.py \
 		--id "$MAPPINGS_COUNT" \
 		--target "echo-a.$BACKEND_NAMESPACE" \
 		-n "$BACKEND_NAMESPACE" |
@@ -203,7 +228,7 @@ bench_reconf_throu() {
 
 	info "Sleeping for $CALM_DOWN_TIME secs until the system calms down..." && sleep $CALM_DOWN_TIME
 	info "Changing all $MAPPINGS_COUNT mappings to 'echo-a' and waiting for $url_expr to return 200"
-	./scripts/mappings.py \
+	$runner_sh_dir/scripts/mappings.py \
 		--count "$MAPPINGS_COUNT" \
 		--target "echo-a.$BACKEND_NAMESPACE" \
 		-n "$BACKEND_NAMESPACE" |
@@ -265,13 +290,7 @@ bench_latency() {
 	local url="https://$aes_host/echo-1/"
 
 	info "Enabling endpoint routing..."
-	cat <<EOF | kubectl apply -f -
----
-apiVersion: getambassador.io/v2
-kind: KubernetesEndpointResolver
-metadata:
-  name: endpoint
-EOF
+	echo "$MANIF_ENDPOINT_RES" | kubectl apply -f -
 
 	info "Checking $url is available..."
 	wait_all_urls --url "$url" --wait-code 200 || return 1
@@ -298,18 +317,28 @@ EOF
 	info "Running vegeta in pod $a_vegeta_pod..."
 	for rate in $(echo $LATENCY_RATES | tr "," " "); do
 		machine_short="$(get_cluster_machine_short $CLUSTER_MACHINE)"
-		local_report="$LATENCY_REPORTS_DIR/results-${rate}-${machine_short}.html"
-		remote_bin="/tmp/results-${rate}-${machine_short}.bin"
-		remote_report="/tmp/results-${rate}-${machine_short}.html"
+		local_report="$LATENCY_REPORTS_DIR/${LATENCY_REPORTS_PREFIX}-${rate}-${machine_short}.html"
+		remote_bin="/tmp/${LATENCY_REPORTS_PREFIX}-${rate}-${machine_short}.bin"
+		remote_report="/tmp/${LATENCY_REPORTS_PREFIX}-${rate}-${machine_short}.html"
 		report_title="Latency report: $LATENCY_DURATION @ $rate RPS ($CLUSTER_MACHINE machines)"
 
 		info "... sending requests at $rate rps for $LATENCY_DURATION"
 		kubectl exec -n "$TEST_NAMESPACE" -ti "$a_vegeta_pod" -- \
 			sh -c "echo 'GET $url' | vegeta attack -insecure -rate=$rate -duration=$LATENCY_DURATION | tee $remote_bin | vegeta report"
+		if [ $? -ne 0 ]; then
+			kubectl logs -n "$TEST_NAMESPACE" "$a_vegeta_pod"
+			kubectl describe "pod/$a_vegeta_pod"
+			abort "could not run Vegeta in pod"
+		fi
 
 		info "... generating and copying HTML file to $local_report"
 		kubectl exec -n "$TEST_NAMESPACE" -ti "$a_vegeta_pod" -- \
 			sh -c "cat $remote_bin | vegeta plot --title '$report_title' > $remote_report"
+		if [ $? -ne 0 ]; then
+			kubectl logs -n "$TEST_NAMESPACE" "$a_vegeta_pod"
+			kubectl describe "pod/$a_vegeta_pod"
+			abort "could not generate plot in Vegeta pod"
+		fi
 		rm -f "$local_report" || /bin/true
 		kubectl cp "$TEST_NAMESPACE/$a_vegeta_pod:$remote_report" "$local_report"
 
@@ -321,11 +350,17 @@ EOF
 		passed "***********************************************************************************************"
 	done
 	info "... done."
+
+	if [ -n "$LATENCY_REPORTS_INDEX" ]; then
+		info "Generating index for reports on $LATENCY_REPORTS_DIR"
+		$EXE_REPORTS_INDEX "$LATENCY_REPORTS_DIR" >"$LATENCY_REPORTS_DIR/index.html"
+	fi
 }
 
 # run benchmarks
 bench() {
 	local what="$1"
+	shift
 
 	get_env
 	local addr=$(get_amb_addr -n "$TEST_NAMESPACE")
@@ -425,7 +460,7 @@ deploy() {
 		[ -n "$VERBOSE" ] && info "Describe: Ambassador deployment:" && amb_describe -n "$TEST_NAMESPACE"
 		info ""
 		local addr=$(get_amb_addr -n "$TEST_NAMESPACE")
-		info "Ambassador is available at $addr"
+		info "Ambassador has been deployed. It is available at $addr."
 		;;
 
 	*)
@@ -622,11 +657,11 @@ while [[ $# -gt 0 ]] && [[ "$1" == "--"* ]]; do
 		;;
 
 		# latency rates
-	"--latency-rates" | "--lat-rates" | "--rates")
+	"--latency-rates" | "--lat-rates" | "--rates" | "--rate" | "--rps")
 		export LATENCY_RATES="$1"
 		shift
 		;;
-	"--latency-rates="* | "--late-rates="* | "--rates="*)
+	"--latency-rates="* | "--late-rates="* | "--rates="* | "--rate="* | "--rps="*)
 		export LATENCY_RATES="${opt#*=}"
 		;;
 
@@ -646,6 +681,26 @@ while [[ $# -gt 0 ]] && [[ "$1" == "--"* ]]; do
 		;;
 	"--latency-reports-dir="* | "--reports-dir="* | "--dir="*)
 		export LATENCY_REPORTS_DIR="${opt#*=}"
+		;;
+
+	"--latency-reports-index" | "--reports-index")
+		export LATENCY_REPORTS_INDEX=1
+		;;
+
+	"--latency-reports-urls" | "--latency-reports-url")
+		export LATENCY_REPORTS_LINK="$1"
+		shift
+		;;
+	"--latency-reports-urls="* | "--latency-reports-url="*)
+		export LATENCY_REPORTS_LINK="${opt#*=}"
+		;;
+
+	"--latency-reports-prefix")
+		export LATENCY_REPORTS_PREFIX="$1"
+		shift
+		;;
+	"--latency-reports-prefix="*)
+		export LATENCY_REPORTS_PREFIX="${opt#*=}"
 		;;
 
 		# number of hosts
@@ -680,24 +735,28 @@ while [[ $# -gt 0 ]] && [[ "$1" == "--"* ]]; do
 		# cluster arguments
 	"--cluster-name")
 		export CLUSTER_NAME="$1"
+		shift
 		;;
 	"--cluster-name="*)
 		export CLUSTER_NAME="${opt#*=}"
 		;;
 	"--cluster-size")
 		export CLUSTER_SIZE="$1"
+		shift
 		;;
 	"--cluster-size="*)
 		export CLUSTER_SIZE="${opt#*=}"
 		;;
 	"--cluster-machine" | "--cluster-machines" | "--machines")
 		export CLUSTER_MACHINE="$1"
+		shift
 		;;
 	"--cluster-machine="* | "--cluster-machines="* | "--machines="*)
 		export CLUSTER_MACHINE="${opt#*=}"
 		;;
 	"--cluster-region")
 		export CLUSTER_REGION="$1"
+		shift
 		;;
 	"--cluster-region="*)
 		export CLUSTER_REGION="${opt#*=}"
@@ -750,9 +809,11 @@ else
 
 	case "$opt" in
 	"setup" | "create")
+		info "Setting up cluster..."
 		setup
 		;;
 
+		# undocumented entrypoint
 	"setup-cluster")
 		cluster_provider 'create'
 		get_env || return 1
@@ -760,6 +821,7 @@ else
 		check_kubeconfig || abort "no valid kubeconfig obtained in KUBECONFIG"
 		;;
 
+		# undocumented entrypoint
 	"setup-registry" | "create-registry")
 		cluster_provider 'create-registry'
 		get_env || return 1
@@ -768,9 +830,11 @@ else
 		;;
 
 	"cleanup" | "delete" | "destroy")
+		info "Destroying cluster..."
 		cleanup
 		;;
 
+		# undocumented entrypoint
 	"reset")
 		cleanup || /bin/true
 		setup
@@ -790,13 +854,16 @@ else
 		;;
 
 	"deploy")
+		info "Deploying $1..."
 		deploy "$1" || abort "Deployment failed."
 		;;
 
 	"bench" | "benchmark" | "run")
-		bench "$1" || abort "Benchmark failed."
+		info "Benchmarking $1..."
+		bench "$1" || abort "Benchmark $1 failed."
 		;;
 
+		# undocumented entrypoint
 	"setup-and-bench" | "setup-and-benchmark")
 		cleanup || /bin/true
 		setup || exit 1
@@ -804,6 +871,7 @@ else
 		bench "all" || abort "Benchmark failed."
 		;;
 
+		# undocumented entrypoint
 	"all")
 		cleanup || /bin/true
 		setup || exit 1
@@ -867,6 +935,23 @@ else
 			info "***********************************************************************************"
 			cleanup || /bin/true
 		done
+		;;
+
+		# undocumented entrypoint
+	"reports-index" | "report-index")
+		[ -n "$1" ] || abort "no directory provided"
+		[ -d "$1" ] || abort "'$1' is not a valid directory"
+		info "Generating index for reports on $1/index.html"
+		$EXE_REPORTS_INDEX "$1" >"$1/index.html"
+		shift
+		;;
+
+		# undocumented entrypoint
+	"reports-serve" | "report-serve")
+		$0 reports-index
+		info "Serving on http://127.0.0.1:8080"
+		(cd $1 && python3 -m http.server 8080)
+		shift
 		;;
 
 	*)

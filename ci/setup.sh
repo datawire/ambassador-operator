@@ -21,6 +21,12 @@ download_exe "$EXE_EDGECTL" "$EXE_EDGECTL_URL" || abort "coult not install edgec
 download_exe "$EXE_OSDK" "$EXE_OSDK_URL" || abort "coult not install Operator SDK"
 passed "... dependencies installed successfully"
 
+# info "Install gcloud/gsutil"
+# echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list
+# sudo apt-get install apt-transport-https ca-certificates gnupg
+# curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key --keyring /usr/share/keyrings/cloud.google.gpg add -
+# sudo apt-get update && sudo apt-get install google-cloud-sdk
+
 info "Installing golangci-lint..."
 curl -sSfL "$EXE_GOLINT_URL" | sh -s -- -b $(go env GOPATH)/bin "$GOLINT_VERSION" || abort "could not install golangci-lint"
 passed "... golangci-lint installed successfully"

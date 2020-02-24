@@ -9,28 +9,48 @@ else
   Q = @
 endif
 
-EXE                  = build/ambassador-operator
-
-DEV_KUBECONFIG       = $$HOME/.kube/config
-
 AMB_OPER_REPO        = github.com/datawire/ambassador-operator
 AMB_OPER_MAIN_PKG    = $(AMB_OPER_REPO)/cmd/manager
+
+#-----------------------
+# build & code
+#-----------------------
 
 GIT_VERSION          = $(shell git describe --dirty --tags --always)
 GIT_COMMIT           = $(shell git rev-parse HEAD)
 
 AMB_OPER_BASE_IMAGE ?= ambassador-operator
-AMB_OPER_TAG        ?= dev
-ifeq ($(AMB_OPER_TAG),)
-override AMB_OPER_TAG = $(GIT_VERSION)
+AMB_OPER_IMAGE_TAG        ?= dev
+ifeq ($(AMB_OPER_IMAGE_TAG),)
+override AMB_OPER_IMAGE_TAG = $(GIT_VERSION)
 endif
 
-AMB_OPER_IMAGE      ?= $(AMB_OPER_BASE_IMAGE):$(AMB_OPER_TAG)
+AMB_OPER_IMAGE      ?= $(AMB_OPER_BASE_IMAGE):$(AMB_OPER_IMAGE_TAG)
 AMB_OPER_ARCHES     :="amd64"
 
 AMB_OPER_PKGS        = $(shell go list ./... | grep -v /vendor/)
 AMB_OPER_SRCS        = $(shell find . -name '*.go' -not -path "*/vendor/*")
 AMB_OPER_SHS         = $(shell find . -name '*.sh' -not -path "*/vendor/*")
+
+# Go flags
+#GO_FLAGS            = -mod=vendor
+GO_FLAGS             =
+
+CLUSTER_PROVIDER    ?= k3d
+export CLUSTER_PROVIDER
+
+export CGO_ENABLED:=0
+export GO111MODULE:=on
+export GO15VENDOREXPERIMENT:=1
+
+#-----------------------
+# artifacts / releases
+#-----------------------
+
+EXE                  = build/ambassador-operator
+
+REL_REGISTRY        ?= quay.io/datawire
+REL_AMB_OPER_IMAGE   = $(REL_REGISTRY)/$(AMB_OPER_IMAGE)
 
 # manifests that must be loaded (order matters)
 AMB_NS               = "ambassador"
@@ -58,32 +78,34 @@ ARTIFACT_OPER_MANIF  = $(ARTIFACTS_DIR)/ambassador-operator.yaml
 HELM_CRDS_MANIF      = $(HELM_DIR)/templates/ambassador-operator-crds.yaml
 HELM_OPER_MANIF      = $(HELM_DIR)/templates/ambassador-operator.yaml
 
-
-REL_REGISTRY        ?= quay.io/datawire
-REL_AMB_OPER_IMAGE   = $(REL_REGISTRY)/$(AMB_OPER_IMAGE)
-
 # directory for docs
 DOCS_API_DIR         := docs/api
 
 # the Cart values.yaml
 AMB_OPER_CHART_VALS  := deploy/helm/ambassador-operator/values.yaml
 
-# Go flags
-#GO_FLAGS            = -mod=vendor
-GO_FLAGS             =
+#-----------------------
+# performance reports
+#-----------------------
 
-CLUSTER_PROVIDER    ?= k3d
-export CLUSTER_PROVIDER
+# directory for performance reports
+PERF_REPORTS_DIR     ?= /tmp/perf-reports
+PERF_REPORTS_PREFIX  ?= $(shell date +%Y%m%d)
+PERF_REPORTS_RPS     ?= 1000
+PERF_REPORTS_TIME    ?= 300s
+PERF_WHAT            ?= latency
 
-export CGO_ENABLED:=0
-export GO111MODULE:=on
-export GO15VENDOREXPERIMENT:=1
+#-----------------------
+# other
+#-----------------------
 
-.DEFAULT_GOAL:=help
+DEV_KUBECONFIG       = $$HOME/.kube/config
 
 ##############################
 # Help                       #
 ##############################
+
+.DEFAULT_GOAL:=help
 
 .PHONY: help
 help: ## Show this help screen
@@ -260,7 +282,20 @@ $(AMB_COVERAGE_FILE): test
 e2e: ## Run the e2e tests
 	@echo ">>> Running e2e tests"
 	$(Q)AMB_OPER_IMAGE=$(AMB_OPER_IMAGE) ./tests/e2e/runner.sh \
-		--image-name=$(AMB_OPER_BASE_IMAGE) --image-tag=$(AMB_OPER_TAG) check $(TEST)
+		--image-name=$(AMB_OPER_BASE_IMAGE) --image-tag=$(AMB_OPER_IMAGE_TAG) check $(TEST)
+
+perf:  ## Run the performance tests
+	@echo ">>> Running performance tests"
+	$(Q)./tests/perf/runner.sh --cluster-size 4 setup && \
+		./tests/perf/runner.sh --cluster-size 4 deploy && \
+		./tests/perf/runner.sh \
+			--cluster-size=4 \
+			--latency-duration=$(PERF_REPORTS_TIME) \
+			--latency-rates=$(PERF_REPORTS_RPS) \
+			--latency-reports-prefix=$(PERF_REPORTS_PREFIX) \
+			--latency-reports-dir=$(PERF_REPORTS_DIR) \
+			bench $(PERF_WHAT) && \
+		echo ">>> Performance reports are available at $(PERF_REPORTS_DIR)"
 
 ##############################
 # Utils                      #
@@ -274,16 +309,16 @@ create-namespace:
 
 load-crds: create-namespace release-collect-manifests  ## Load the CRDs in the current cluster
 	@echo ">>> Loading CRDs"
-	$(Q)[ -n $KUBECONFIG ] || echo "WARNING: no KUBECONFIG defined: using default kubeconfig"
+	$(Q)[ -n $$KUBECONFIG ] || echo "WARNING: no KUBECONFIG defined: using default kubeconfig"
 	$(Q)kubectl apply -f $(ARTIFACT_CRDS_MANIF)
 
 load: create-namespace release-collect-manifests load-crds   ## Load the CRDs and manifests in the current cluster
 	@echo ">>> Loading manifests (with REPLACE_IMAGE=$(AMB_OPER_IMAGE))"
-	$(Q)[ -n $KUBECONFIG ] || echo "WARNING: no KUBECONFIG defined: using default kubeconfig"
+	$(Q)[ -n $$KUBECONFIG ] || echo "WARNING: no KUBECONFIG defined: using default kubeconfig"
 	$(Q)kubectl apply -f $(ARTIFACT_OPER_MANIF)
 
 live: build load-crds ## Try to run the operator in the current cluster pointed by KUBECONFIG
-	$(Q)[ -n $KUBECONFIG ] || echo "WARNING: no DEV_KUBECONFIG defined: using default $(DEV_KUBECONFIG)"
+	$(Q)[ -n $$KUBECONFIG ] || echo "WARNING: no DEV_KUBECONFIG defined: using default $(DEV_KUBECONFIG)"
 	@echo ">>> Starting operator with kubeconfig=$(DEV_KUBECONFIG)"
 	$(Q)WATCH_NAMESPACE="default" OPERATOR_NAME="ambassador-operator" \
 		$(EXE) --kubeconfig=$(DEV_KUBECONFIG) --zap-devel
@@ -317,6 +352,11 @@ ci/publish-coverage: $(AMB_COVERAGE_FILE)
 	$(Q)./ci/coverage.sh
 
 ci/after-success: ci/publish-coverage
+
+ci/perf-report: perf
+
+ci/publish-perf-report:
+	$(Q)./ci/push_reports.sh $(PERF_REPORTS_DIR)
 
 ci/cluster-setup:
 	@echo ">>> Setting up cluster-provider CI"

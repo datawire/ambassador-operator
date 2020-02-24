@@ -109,6 +109,20 @@ cleanup)
 	;;
 
 #
+# login
+#
+login)
+	info "No login to do"
+	;;
+
+#
+# logout
+#
+logout)
+	info "No logout to do"
+	;;
+
+#
 # create and destroy tyhe cluster
 #
 create)

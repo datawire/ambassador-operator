@@ -75,7 +75,7 @@ gke_exists_cluster() {
 
 # get a valid JSON authentication file
 gke_get_auth_file() {
-	[ -n "$GKE_AUTH" ] || [ -f "$GKE_AUTH_FILE" ] || abort "no GKE_AUTH var provided"
+	[ -n "$GKE_AUTH" ] || [ -f "$GKE_AUTH_FILE" ] || abort "no GKE_AUTH or GKE_AUTH_FILE env vars provided"
 
 	if [ ! -f "$GKE_AUTH_FILE" ]; then
 		info "Getting the authentication credentials from the GKE_AUTH env var to $GKE_AUTH_FILE"
@@ -191,6 +191,20 @@ cleanup)
 	gke_logout || warn "could not logout"
 
 	rm -rf $HOME/.config/gcloud
+	;;
+
+#
+# login
+#
+login)
+	gke_login
+	;;
+
+#
+# logout
+#
+logout)
+	gke_logout
 	;;
 
 #
