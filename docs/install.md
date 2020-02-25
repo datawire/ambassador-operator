@@ -6,17 +6,17 @@ Firstly, you must install the Ambassador Operator:
 
 - Load the Ambassador Operator CRD with the following command:
   ```shell script
-  $ kubectl apply -f https://github.com/datawire/ambassador-operator/releases/download/latest/ambassador-operator-crds.yaml
+  $ kubectl apply -f https://github.com/datawire/ambassador-operator/releases/latest/download/ambassador-operator-crds.yaml  
   ```
 - Install the Ambassador Operator in the `ambassador` namespace with the following command:
   ```shell script
-  $ kubectl apply -n ambassador -f https://github.com/datawire/ambassador-operator/releases/download/latest/ambassador-operator.yaml
+  $ kubectl apply -n ambassador -f https://github.com/datawire/ambassador-operator/releases/latest/download/ambassador-operator.yaml
   ```
   To install the Ambassador Operator in a different namespace, you can specify it in `NS` and then run
   the following command (that will replace the `ambassador` namespace by `$NS`):
   ```shell script
   $ NS="custom-namespace"
-  $ curl -L https://github.com/datawire/ambassador-operator/releases/download/latest/ambassador-operator.yaml | \
+  $ curl -L https://github.com/datawire/ambassador-operator/releases/latest/download/ambassador-operator.yaml | \
       sed -e "s/namespace: ambassador/namespace: $NS/g" | \
       kubectl apply -n $NS -f -
   ```
