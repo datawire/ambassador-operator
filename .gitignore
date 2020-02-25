@@ -1,7 +1,6 @@
-# Temporary Build Files
-build/_output
-build/_test
+###########################################################################
 # Created by https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
+
 ### Emacs ###
 # -*- mode: gitignore; -*-
 *~
@@ -12,44 +11,7 @@ build/_test
 auto-save-list
 tramp
 .\#*
-# Org-mode
-.org-id-locations
-*_archive
-# flymake-mode
-*_flymake.*
-# eshell files
-/eshell/history
-/eshell/lastdir
-# elpa packages
-/elpa/
-# reftex files
-*.rel
-# AUCTeX auto folder
-/auto/
-# cask packages
-.cask/
-dist/
-# Flycheck
-flycheck_*.el
-# server auth directory
-/server/
-# projectiles files
-.projectile
-projectile-bookmarks.eld
-# directory configuration
-.dir-locals.el
-# saveplace
-places
-# url cache
-url/cache/
-# cedet
-ede-projects.el
-# smex
-smex-items
-# company-statistics
-company-statistics-cache.el
-# anaconda-mode
-anaconda-mode/
+
 ### Go ###
 # Binaries for programs and plugins
 *.exe
@@ -61,6 +23,7 @@ anaconda-mode/
 *.test
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
 ### Vim ###
 # swap
 .sw[a-p]
@@ -71,12 +34,16 @@ Session.vim
 .netrwhist
 # auto-generated tag files
 tags
+
 ### VisualStudioCode ###
 .vscode/*
 .history
 # End of https://www.gitignore.io/api/go,vim,emacs,visualstudiocode
 
+########################################################################
 
+build/_output
+build/_test
 build/ambassador-operator
 build/ambassador-operator-dev-linux-gnu
 build/artifacts
@@ -85,4 +52,6 @@ build/artifacts
 *.local
 
 tests/perf/reports/
+
+coverage.*
 

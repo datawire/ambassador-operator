@@ -44,6 +44,8 @@ AMB_DEPLOY_MANIF     = deploy/service_account.yaml \
 AMB_OPER_MANIF       = $(AMB_NS_MANIF) \
                        $(AMB_DEPLOY_MANIF)
 
+AMB_COVERAGE_FILE   := coverage.txt
+
 # directory where release artifacts go
 ARTIFACTS_DIR       ?= build/artifacts
 HELM_DIR            ?= deploy/helm/ambassador-operator
@@ -251,7 +253,9 @@ chart-push: ## Push the Helm chart (will need some AWS env vars)
 
 test: ## Run the Go tests
 	@echo ">>> Running the Go tests..."
-	$(Q)go test -coverprofile=coverage.txt -covermode=atomic -v $(GO_FLAGS) $(AMB_OPER_PKGS)
+	$(Q)go test -coverprofile=$(AMB_COVERAGE_FILE) -covermode=atomic -v $(GO_FLAGS) $(AMB_OPER_PKGS)
+
+$(AMB_COVERAGE_FILE): test
 
 e2e: ## Run the e2e tests
 	@echo ">>> Running e2e tests"
@@ -309,8 +313,10 @@ ci/publish-image: image-push
 
 ci/publish-chart: chart-push
 
-ci/after-success:
-	curl -s https://codecov.io/bash | bash
+ci/publish-coverage: $(AMB_COVERAGE_FILE)
+	$(Q)./ci/coverage.sh
+
+ci/after-success: ci/publish-coverage
 
 ci/cluster-setup:
 	@echo ">>> Setting up cluster-provider CI"
