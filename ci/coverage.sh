@@ -27,4 +27,3 @@ chmod 755 "$EXE_CODECOV"
 
 info "Running codecov with config from $CODECOD_YAML"
 cd "$TOP_DIR" && $EXE_CODECOV -y "$CODECOD_YAML"
-
