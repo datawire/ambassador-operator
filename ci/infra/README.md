@@ -52,5 +52,5 @@ See the [credentials](CREDENTIALS.md) document for more details.
 * `CLUSTER_MACHINE`: node size or _model_, depending on the cluster provider 
   (ie, on Azure it can be something like `Standard_D2s_v3`).
 * `CLUSTER_REGION`: cluster location (ie, `us-east1-b` on GKE).
-
+* `CLUSTER_REGISTRY`: (supported by some providers) custom name for the registry in the cluster.
 

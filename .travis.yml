@@ -54,7 +54,7 @@ jobs:
     - stage: Publish artifacts
       if: tag IS present
       name: "Publish artifacts"
-      env: AMB_OPER_TAG="$TRAVIS_TAG"
+      env: AMB_OPER_TAG="$TRAVIS_TAG" CLUSTER_REGISTRY="datawire-io"
 
       # generate all the artifacts that will be published by the "deploy"
       before_deploy:
@@ -79,6 +79,14 @@ jobs:
           on:
             all_branches: true
           script: make ci/publish-image
+          skip_cleanup: true
+        # publish the image to Azure
+        # NOTE: make sure DOCKER_USERNAME/DOCKER_PASSWORD have values for a bot
+        #       (from https://quay.io/repository/datawire/ambassador-operator?tab=settings)
+        - provider: script
+          on:
+            all_branches: true
+          script: make ci/publish-image-cloud
           skip_cleanup: true
         # publish helm chart
         # NOTE: needs AWS_ACCESS_KEY_ID, AWS_BUCKET and AWS_SECRET_ACCESS_KEY (from keybase)

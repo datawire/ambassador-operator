@@ -38,7 +38,7 @@ AZ_CLUSTER_NUM_NODES="${CLUSTER_SIZE:-1}"
 AZ_CLUSTER_NODE_SIZE="${CLUSTER_MACHINE:-Standard_D2s_v3}"
 
 # the registry name (must conform to the following pattern: '^[a-zA-Z0-9]*$')
-AZ_REGISTRY="AmbassadorOperatorTests${num}"
+AZ_REGISTRY="${CLUSTER_REGISTRY:-AmbassadorOperatorTests${num}}"
 
 # resource group
 AZ_RES_GRP="$AZ_CLUSTER"

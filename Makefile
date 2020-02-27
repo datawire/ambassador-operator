@@ -311,6 +311,10 @@ ci/release: release-collect-manifests gen-crds-docs
 
 ci/publish-image: image-push
 
+ci/publish-image-cloud:
+	@echo ">>> Creating a registry in the cloud"
+	$(Q)./ci/infra/providers.sh create-registry
+
 ci/publish-chart: chart-push
 
 ci/publish-coverage: $(AMB_COVERAGE_FILE)
