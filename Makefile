@@ -312,8 +312,12 @@ ci/release: release-collect-manifests gen-crds-docs
 ci/publish-image: image-push
 
 ci/publish-image-cloud:
-	@echo ">>> Creating a registry in the cloud"
-	$(Q)./ci/infra/providers.sh create-registry
+	$(Q)[ -n "$(CLUSTER_REGISTRY)" ] || { echo "FATAL: no CLUSTER_REGISTRY defined" ; exit 1 ; }
+	$(Q)[ -n "$(CLUSTER_PROVIDER)" ] || { echo "FATAL: no CLUSTER_PROVIDER defined" ; exit 1 ; }
+	@echo ">>> Creating a registry in the cloud (with $(CLUSTER_REGISTRY))"
+	$(Q)./ci/infra/providers.sh create-registry && \
+		eval `./ci/infra/providers.sh get-env 2>/dev/null` && \
+		REL_REGISTRY="$$DEV_REGISTRY" make ci/publish-image
 
 ci/publish-chart: chart-push
 

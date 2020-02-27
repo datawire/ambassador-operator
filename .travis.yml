@@ -54,7 +54,11 @@ jobs:
     - stage: Publish artifacts
       if: tag IS present
       name: "Publish artifacts"
-      env: AMB_OPER_TAG="$TRAVIS_TAG" CLUSTER_REGISTRY="datawire-io"
+      env:
+        - AMB_OPER_TAG="$TRAVIS_TAG"
+        - CLUSTER_REGISTRY="datawire"
+        - CLUSTER_PROVIDER="azure"
+        - AZ_RES_GRP="DefaultResourceGroup-EUS"
 
       # generate all the artifacts that will be published by the "deploy"
       before_deploy:

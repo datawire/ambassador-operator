@@ -543,7 +543,7 @@ trap_add() {
 		existing_cmd=$(trap -p "${trap_add_name}" | awk -F"'" '{print $2}')
 
 		# Define default command
-		[ -z "${existing_cmd}" ] && existing_cmd="echo exiting @ $(date)"
+		[ -z "${existing_cmd}" ] && existing_cmd="echo exiting @ $(date) 1>&2"
 
 		# Generate the new command
 		new_cmd="${trap_add_cmd};${existing_cmd}"

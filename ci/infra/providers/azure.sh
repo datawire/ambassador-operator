@@ -41,7 +41,7 @@ AZ_CLUSTER_NODE_SIZE="${CLUSTER_MACHINE:-Standard_D2s_v3}"
 AZ_REGISTRY="${CLUSTER_REGISTRY:-AmbassadorOperatorTests${num}}"
 
 # resource group
-AZ_RES_GRP="$AZ_CLUSTER"
+AZ_RES_GRP="${AZ_RES_GRP:-$AZ_CLUSTER}"
 
 # set to non-empty for managin the reosurce group
 MANAGE_RES_GRP=1
@@ -66,6 +66,10 @@ export PATH=$PATH:${AZ_INSTALL_DIR}/bin
 
 az_check_registry() {
 	$EXE_AZ acr show -n "$AZ_REGISTRY" >/dev/null 2>&1
+}
+
+az_check_resource_group() {
+	az group show --name "$AZ_RES_GRP" >/dev/null 2>&1
 }
 
 az_get_logged_in_user() {
@@ -266,7 +270,7 @@ create)
 			info "$AZ_CLUSTER already exists: CLUSTER_REUSE=true: exitting"
 			exit 0
 		else
-			info "$AZ_CLUSTER already ewxists: deleting (synchronously)"
+			info "$AZ_CLUSTER already exists: deleting (synchronously)"
 			$EXE_AZ aks delete --resource-group "$AZ_RES_GRP" --name "$AZ_CLUSTER" $AZ_DELETE_ARGS ||
 				abort "could not delete cluster $AZ_CLUSTER"
 			passed "... Cluster $AZ_CLUSTER deleted."
@@ -286,7 +290,7 @@ create)
 		passed "... $AZ_LOC is ok"
 	fi
 
-	# check that the VM size is available in that location
+	# check the VM size is available in that location
 	if [ -n "$AZ_CLUSTER_NODE_SIZE" ]; then
 		info "Checking $AZ_CLUSTER_NODE_SIZE exists in $AZ_LOC"
 		$EXE_AZ vm list-sizes -l "$AZ_LOC" --query "[].name" | grep -q "$AZ_CLUSTER_NODE_SIZE" || {
@@ -391,6 +395,11 @@ delete)
 #
 create-registry)
 	az_login || abort "registry creation aborted"
+
+	if ! az_check_resource_group; then
+		warn "Resource group $AZ_RES_GRP does not seem to exists: create it, or scpecify a valid one on AZ_RES_GRP"
+		abort "inavlid resource group $AZ_RES_GRP"
+	fi
 
 	info "Creating a azure registry $AZ_REGISTRY (in $AZ_RES_GRP)..."
 	$EXE_AZ acr create --resource-group "$AZ_RES_GRP" --name "$AZ_REGISTRY" --sku Basic ||
