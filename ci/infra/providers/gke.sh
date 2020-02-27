@@ -36,7 +36,7 @@ GKE_CLUSTER="${CLUSTER_NAME:-amb-oper-tests-$user-$num}"
 GKE_CLUSTER_NUM_NODES="${CLUSTER_SIZE:-1}"
 
 # machine type
-GKE_CLUSTER_MACHINE_TYPE="${CLUSTER_MACHINE:n2-standard-2}"
+GKE_CLUSTER_MACHINE_TYPE="${CLUSTER_MACHINE:-n2-standard-2}"
 
 # cluster region (https://cloud.google.com/compute/docs/regions-zones?hl=en#available)
 GKE_LOC_REGION="${CLUSTER_REGION:-us-east1-b}"
@@ -75,7 +75,7 @@ gke_exists_cluster() {
 
 # get a valid JSON authentication file
 gke_get_auth_file() {
-	[ -n "$GKE_AUTH" ] || [ -f "$GKE_AUTH_FILE" ] || abort "no GKE_AUTH var provided"
+	[ -n "$GKE_AUTH" ] || [ -f "$GKE_AUTH_FILE" ] || abort "no GKE_AUTH or GKE_AUTH_FILE env vars provided"
 
 	if [ ! -f "$GKE_AUTH_FILE" ]; then
 		info "Getting the authentication credentials from the GKE_AUTH env var to $GKE_AUTH_FILE"
@@ -106,6 +106,14 @@ gke_docker_registry() {
 	echo "$GKE_REGISTRY_HOST/$project"
 }
 
+gke_docker_registry_login() {
+	info "Configuring the Docker registry"
+	$EXE_GCLOUD auth print-access-token |
+		docker login -u oauth2accesstoken --password-stdin "https://${GKE_REGISTRY_HOST}" ||
+		abort "could not authenticate for Docker on ${GKE_REGISTRY_HOST}"
+	passed "... Docker registry configured for ${GKE_REGISTRY_HOST}"
+}
+
 gke_login() {
 	gke_get_auth_file || return 1
 
@@ -114,12 +122,6 @@ gke_login() {
 	info "... using email=$email"
 	$EXE_GCLOUD auth activate-service-account "$email" --key-file="$GKE_AUTH_FILE" || abort "could not authenticate"
 	passed "... authenticated as $email"
-
-	info "Configuring the Docker registry"
-	$EXE_GCLOUD auth print-access-token |
-		docker login -u oauth2accesstoken --password-stdin "https://${GKE_REGISTRY_HOST}" ||
-		abort "could not authenticate for Docker on ${GKE_REGISTRY_HOST}"
-	passed "... Docker registry configured for ${GKE_REGISTRY_HOST}"
 
 	info "Setting compute region: $GKE_LOC_REGION"
 	$EXE_GCLOUD config set compute/region "$GKE_LOC_REGION" || abort "could not set region $GKE_LOC_REGION"
@@ -148,6 +150,10 @@ gke_logout() {
 	else
 		warn "no login to revoke"
 	fi
+}
+
+gke_delete_cluster() {
+	$EXE_GCLOUD container clusters delete --quiet --region "$GKE_LOC_REGION" "$GKE_CLUSTER"
 }
 
 #########################################################################################
@@ -186,11 +192,26 @@ cleanup)
 	gke_active_account || gke_login
 
 	info "Deleting cluster $GKE_CLUSTER"
-	$EXE_GCLOUD container clusters delete --quiet --async --region "$GKE_LOC_REGION" "$GKE_CLUSTER" || /bin/true
+	gke_delete_cluster || /bin/true
 
 	gke_logout || warn "could not logout"
 
 	rm -rf $HOME/.config/gcloud
+	;;
+
+#
+# login
+#
+login)
+	gke_login
+	gke_docker_registry_login
+	;;
+
+#
+# logout
+#
+logout)
+	gke_logout
 	;;
 
 #
@@ -204,8 +225,8 @@ create)
 			info "cluster already exists: CLUSTER_REUSE=true: exitting"
 			exit 0
 		else
-			info "cluster has already been created: releasing"
-			$0 delete
+			info "cluster has already been created: releasing $GKE_CLUSTER"
+			gke_delete_cluster || abort "could not delete cluster $GKE_CLUSTER"
 		fi
 	fi
 
@@ -229,6 +250,7 @@ create)
 		abort "GKE was not able to create a valid kubernetes cluster"
 	passed "... cluster seems to be alive"
 
+	gke_docker_registry_login || abort
 	info "GKE cluster created"
 	;;
 
@@ -242,9 +264,7 @@ delete)
 
 	if gke_exists_cluster; then
 		info "Deleting cluster $GKE_CLUSTER"
-		$EXE_GCLOUD container clusters delete --quiet \
-			--region "$GKE_LOC_REGION" "$GKE_CLUSTER" ||
-			abort "could not delete cluster $GKE_CLUSTER"
+		gke_delete_cluster || abort "could not delete cluster $GKE_CLUSTER"
 	fi
 
 	gke_logout || warn "could not logout"
@@ -262,7 +282,7 @@ exists)
 # the registry
 #
 create-registry)
-	info "Nothing to do for creating the registry in GKE"
+	gke_docker_registry_login
 	;;
 
 delete-registry)

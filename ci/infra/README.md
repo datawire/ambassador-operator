@@ -11,7 +11,9 @@ The `providers.sh` script provides the following entry points:
   * **cleanup**: perform any cleanups when we are done with this cluster provider, like
   removing any tools that were downloaded. The cleanup should make sure that no clusters
   are kept alive in the provider. 
-  * **exists**: return 0 if the cluster already exists. 
+  * **exists**: return 0 if the cluster already exists.
+  * **login**/**logout**: login/logout from the cloud provider. Usually not directly used
+  by users but from other entrypoints.
   * **create**: create a cluster that will become the _current cluster_. The _kubeconfig_
   will be returned in `get-env` as `KUBECONFIG`.
   * **delete**: delete the current cluster, previously created with `create`.

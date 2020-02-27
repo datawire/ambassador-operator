@@ -42,7 +42,7 @@ providers currently supported.
    "tenant": "<AZ_TENANT>"
   }
   ```   
-  and save it to `azure-credentials.json`.
+  and save it to `az-credentials.json`.
   
 - Now you can then save the credentials in multiple ways (env vars must be set in Travis/CircleCI/etc):
 
@@ -56,7 +56,7 @@ providers currently supported.
     - encode it with `base64` to a file and save that file in a `AZ_AUTH` env variable.
       For example, for Travis, you could use the command line tool like:
       ```
-      $ travis env set AZ_AUTH "$(cat az-credentials.json | base64)"
+      $ travis env set AZ_AUTH "$(cat az-credentials.json | base64 | tr -d ' ' | tr -d '\n')"
       ```
   c) copy some of the values in the file to env variables:
     - value of `appId` should be copied to `AZ_USERNAME`
@@ -79,11 +79,11 @@ providers currently supported.
 
 - Then you could:
   a) use some env variables:
-    - encode the file with `base64 < gke-credentials.json`
+    - encode the file with `cat gke-credentials.json | base64 | tr -d ' ' | tr -d '\n'`
     - save the output in a Travis env var called `GKE_AUTH`
     - for Travis, you can do it with the command line client with:
       ```shell script
-      $ travis env set GKE_AUTH "$(cat gke-credentials.json | base64)"
+      $ travis env set GKE_AUTH "$(cat gke-credentials.json | base64 | tr -d ' ' | tr -d '\n')"
       ```
   b) encrypt the file
     - for Travis, `travis encrypt-file gke-credentials.json`
