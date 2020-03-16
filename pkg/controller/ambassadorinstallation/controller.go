@@ -14,7 +14,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	crthandler "sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	crtpredicate "sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -120,7 +119,7 @@ func add(mgr manager.Manager, r *ReconcileAmbassadorInstallation) error {
 				continue
 			}
 
-			err = c.Watch(&source.Kind{Type: &u}, &crthandler.EnqueueRequestForOwner{OwnerType: owner}, dependentPredicate)
+			err = c.Watch(&source.Kind{Type: &u}, &handler.EnqueueRequestForOwner{OwnerType: owner}, dependentPredicate)
 			if err != nil {
 				return err
 			}
