@@ -39,7 +39,6 @@ type AmbassadorInstallationSpec struct {
 	BaseImage string `json:"baseImage,omitempty"`
 
 	// An (optional) Helm repository.
-	// +kubebuilder:validation:Pattern=`https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)`
 	HelmRepo string `json:"helmRepo,omitempty"`
 
 	// An (optional) log level: debug, info...

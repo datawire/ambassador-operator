@@ -154,7 +154,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	})
 	status.RemoveCondition(ambassador.ConditionIrreconcilable)
 
-	helmValues := map[string]string{}
+	helmValues := HelmValues{}
 	for k, v := range ambObj.Spec.HelmValues {
 		helmValues[k] = v
 	}

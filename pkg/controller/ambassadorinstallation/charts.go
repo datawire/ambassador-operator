@@ -37,19 +37,22 @@ var (
 	ErrNoChartDirFound = errors.New("no chart directory found")
 )
 
+// HelmValues is the values for the Helm chart
+type HelmValues map[string]string
+
 // HelmManager is a remote Helm repo or a file, provided with an URL
 type HelmManager struct {
 	mgr     manager.Manager
 	url     *url.URL
 	cvr     ChartVersionRule
-	values  map[string]string
+	values  HelmValues
 	downDir string
 }
 
 // NewHelmManager creates a new charts manager
 // The Helm Manager will use the URL provided, and download (lazily) a Chart that
 // obeys the Version Rule.
-func NewHelmManager(mgr manager.Manager, u string, cvr ChartVersionRule, values map[string]string) (HelmManager, error) {
+func NewHelmManager(mgr manager.Manager, u string, cvr ChartVersionRule, values HelmValues) (HelmManager, error) {
 	// process the URL, using the default URL when not provided
 	if u == "" {
 		u = DefaultHelmRepoURL
@@ -68,7 +71,7 @@ func NewHelmManager(mgr manager.Manager, u string, cvr ChartVersionRule, values 
 }
 
 // GetValues returns the values associated with this Helm manager
-func (lc HelmManager) GetValues() map[string]string {
+func (lc HelmManager) GetValues() HelmValues {
 	return lc.values
 }
 
@@ -79,7 +82,9 @@ func (lc HelmManager) GetVersionRule() ChartVersionRule {
 
 // Download performs the download of the Chart pointed by the URL, returning a directory with a Chart.yaml inside.
 func (lc *HelmManager) GetManagerFor(o *unstructured.Unstructured) (release.Manager, error) {
+	var err error
 	log := log.WithValues("URL", lc.url)
+	chartDir := ""
 
 	// parse the helm repo URL and try to download the helm chart
 	switch lc.url.Scheme {
@@ -102,14 +107,17 @@ func (lc *HelmManager) GetManagerFor(o *unstructured.Unstructured) (release.Mana
 			}
 		}
 
+		log.V(1).Info("Finding chart")
+		chartDir, err = lc.findChartDir()
+		if err != nil {
+			return nil, err
+		}
+
+	case "file":
+		chartDir = lc.url.Path
+
 	default:
 		return nil, fmt.Errorf("%w: u.Scheme", ErrUnknownHelmRepoScheme)
-	}
-
-	log.V(1).Info("Finding chart")
-	chartDir, err := lc.findChartDir()
-	if err != nil {
-		return nil, err
 	}
 
 	factory := release.NewManagerFactory(lc.mgr, chartDir)
