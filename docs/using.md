@@ -108,7 +108,7 @@ force system updates to happen late at night if that’s what the sysadmins want
     ```
   * Complex data structures must be _collapsed_, using dots for separating all the elements in a tree
     and `[]` for creating lists. For example, you should use:
-    ```yamls
+    ```yaml
     # this is valid
     helmValues:
       servers[0].port: "80"
