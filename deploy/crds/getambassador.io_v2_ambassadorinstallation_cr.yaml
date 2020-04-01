@@ -3,6 +3,9 @@ kind: AmbassadorInstallation
 metadata:
   name: ambassador
 spec:
-  # Will install the latest version
-  version: "*"
-  helmRepo: "https://www.getambassador.io"
+  version: "1.*"
+  helmValues:
+    service.ports[0].name: "http"
+    service.ports[0].port: "80"
+    service.ports[0].targetPort: "8080"
+
