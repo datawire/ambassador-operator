@@ -36,6 +36,13 @@ const (
 )
 
 var (
+	// some default Helm values
+	defaultChartValues = map[string]string{
+		"deploymentTool": "amd-oper",
+	}
+)
+
+var (
 	// DefaultGVK is the GVK used by the AmbassadorInstallation
 	// TODO: we should get these details from the CRD or somewhere...
 	DefaultGVK = schema.GroupVersionKind{
@@ -154,7 +161,11 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	})
 	status.RemoveCondition(ambassador.ConditionIrreconcilable)
 
+	// copy all the values, both from the default values as from the user provided ones
 	helmValues := HelmValues{}
+	for k, v := range defaultChartValues {
+		helmValues[k] = v
+	}
 	for k, v := range ambObj.Spec.HelmValues {
 		helmValues[k] = v
 	}
