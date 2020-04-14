@@ -38,7 +38,7 @@ const (
 var (
 	// some default Helm values
 	defaultChartValues = map[string]string{
-		"deploymentTool": "amd-oper",
+		"deploymentTool": "amb-oper",
 	}
 )
 
