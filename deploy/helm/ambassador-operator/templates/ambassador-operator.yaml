@@ -4,12 +4,26 @@ kind: ServiceAccount
 metadata:
   name: ambassador-operator
   namespace: {{ .Values.namespace }}
+  labels:
+    app.kubernetes.io/name: {{ include "operator.name" . }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+    helm.sh/chart: {{ include "operator.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    getambassador.io/installer: operator
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
   creationTimestamp: null
   name: ambassador-operator
+  labels:
+    app.kubernetes.io/name: {{ include "operator.name" . }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+    helm.sh/chart: {{ include "operator.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    getambassador.io/installer: operator
 rules:
   - apiGroups:
       - ""
@@ -92,6 +106,13 @@ apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: ambassador-operator-cluster
+  labels:
+    app.kubernetes.io/name: {{ include "operator.name" . }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+    helm.sh/chart: {{ include "operator.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    getambassador.io/installer: operator
 rules:
   - apiGroups: ['*']
     resources: ['*']
@@ -103,6 +124,13 @@ kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: ambassador-operator
+  labels:
+    app.kubernetes.io/name: {{ include "operator.name" . }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+    helm.sh/chart: {{ include "operator.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    getambassador.io/installer: operator
 subjects:
   - kind: ServiceAccount
     name: ambassador-operator
@@ -116,6 +144,13 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: ambassador-operator-cluster
+  labels:
+    app.kubernetes.io/name: {{ include "operator.name" . }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+    helm.sh/chart: {{ include "operator.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    getambassador.io/installer: operator
 subjects:
   - kind: ServiceAccount
     name: ambassador-operator
@@ -125,10 +160,32 @@ roleRef:
   name: ambassador-operator-cluster
   apiGroup: rbac.authorization.k8s.io
 ---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: static-helm-values
+  labels:
+    app.kubernetes.io/name: {{ include "operator.name" . }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+    helm.sh/chart: {{ include "operator.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    getambassador.io/installer: operator
+data:
+  values.yaml: |+
+    deploymentTool: amb-oper-helm
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ambassador-operator
+  labels:
+    app.kubernetes.io/name: {{ include "operator.name" . }}
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+    helm.sh/chart: {{ include "operator.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    getambassador.io/installer: operator
 spec:
   replicas: 1
   selector:
@@ -138,6 +195,15 @@ spec:
     metadata:
       labels:
         name: ambassador-operator
+        app.kubernetes.io/name: {{ include "operator.name" . }}
+        app.kubernetes.io/part-of: {{ .Release.Name }}
+        helm.sh/chart: {{ include "operator.chart" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+        getambassador.io/installer: operator
+        {{- if .Values.podLabels }}
+          {{- toYaml .Values.podLabels | nindent 8 }}
+        {{- end }}
     spec:
       serviceAccountName: ambassador-operator
       containers:
@@ -158,3 +224,10 @@ spec:
                   fieldPath: metadata.name
             - name: OPERATOR_NAME
               value: "ambassador-operator"
+          volumeMounts:
+            - name: static-helm-values
+              mountPath: /tmp/helm
+      volumes:
+        - name: static-helm-values
+          configMap:
+            name: static-helm-values

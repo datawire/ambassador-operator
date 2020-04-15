@@ -14,12 +14,12 @@ source "$this_dir/../common.sh"
 # local variables
 ########################################################################################################################
 
-CUSTOM_IMAGE_FIRST="quay.io/datawire/aes:1.0.0"
-CUSTOM_IMAGE_SECOND="quay.io/datawire/aes:1.1.0"
+CUSTOM_IMAGE_FIRST="quay.io/datawire/aes:1.3.0"
+CUSTOM_IMAGE_SECOND="quay.io/datawire/aes:1.4.0"
 
 # the versions of Ambassador to install
-IMAGE_TAG_FIRST="1.0.0"
-IMAGE_TAG_SECOND="1.1.0"
+IMAGE_TAG_FIRST="1.3.0"
+IMAGE_TAG_SECOND="1.4.0"
 
 ########################################################################################################################
 

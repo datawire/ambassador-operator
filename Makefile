@@ -58,6 +58,8 @@ ARTIFACT_OPER_MANIF  = $(ARTIFACTS_DIR)/ambassador-operator.yaml
 HELM_CRDS_MANIF      = $(HELM_DIR)/templates/ambassador-operator-crds.yaml
 HELM_OPER_MANIF      = $(HELM_DIR)/templates/ambassador-operator.yaml
 
+IMAGE_EXTRA_FILE         ?=
+IMAGE_EXTRA_FILE_CONTENT ?=
 
 REL_REGISTRY        ?= quay.io/datawire
 REL_AMB_OPER_IMAGE   = $(REL_REGISTRY)/$(AMB_OPER_IMAGE)
@@ -108,8 +110,10 @@ all: format build test ## Test and Build the Ambassador Operator
 
 build: $(EXE) ## Build the Ambassador Operator executable
 
-format: ## Format the source code
+format: ## Format the Go source code
 	$(Q)go fmt $(AMB_OPER_PKGS)
+
+format-sh:  ## Format the Shell source code
 	$(Q)command -v shfmt >/dev/null && shfmt -w $(AMB_OPER_SHS)
 
 tidy: ## Update dependencies
@@ -119,6 +123,7 @@ clean: ## Clean up the build artifacts
 	$(Q)rm -rf $(EXE) \
 		build/_output $(ARTIFACTS_DIR) \
 		$(ARTIFACT_CRDS_MANIF) $(ARTIFACT_OPER_MANIF)
+	$(Q)docker rmi $(AMB_OPER_IMAGE) >/dev/null 2>&1 || /bin/true
 
 lint-dev:  ## Run golangci-lint with all checks enabled (development purpose only)
 	./hack/tests/check-lint.sh dev
@@ -231,6 +236,10 @@ image: image-build image-push ## Build and push all images
 image-build: $(EXE) ## Build images
 	@echo ">>> Building image $(AMB_OPER_IMAGE)"
 	$(Q)./hack/image/build-amb-oper-image.sh $(AMB_OPER_IMAGE)
+	$(Q)if [ -n "$(IMAGE_EXTRA_FILE)" ] && [ -n "$(IMAGE_EXTRA_FILE_CONTENT)" ] ; then \
+  		./hack/image/add-file-to-image.sh \
+			--path "$(IMAGE_EXTRA_FILE)" --content "$(IMAGE_EXTRA_FILE_CONTENT)" --image $(AMB_OPER_IMAGE) --check ; \
+		fi
 
 image-push: image-build ## Push images to the registry
 	$(Q)./hack/image/push-image-tags.sh $(AMB_OPER_IMAGE) $(REL_AMB_OPER_IMAGE)
@@ -257,7 +266,7 @@ test: ## Run the Go tests
 
 $(AMB_COVERAGE_FILE): test
 
-e2e: ## Run the e2e tests
+e2e: ## Run the e2e tests (can use VERBOSE=1)
 	@echo ">>> Running e2e tests"
 	$(Q)AMB_OPER_IMAGE=$(AMB_OPER_IMAGE) ./tests/e2e/runner.sh \
 		--image-name=$(AMB_OPER_BASE_IMAGE) --image-tag=$(AMB_OPER_TAG) check $(TEST)
@@ -318,6 +327,14 @@ ci/publish-image-cloud:
 	$(Q)./ci/infra/providers.sh create-registry && \
 		eval `./ci/infra/providers.sh get-env 2>/dev/null` && \
 		REL_REGISTRY="$$DEV_REGISTRY" make ci/publish-image
+
+ci/publish-image-cloud/azure:
+	# for Azure, create an image with an extra Helm Values file.
+	# This file will be loaded automatically by the operator and used for setting
+	# some custom Helm variables like "deploymentTool"
+	make ci/publish-image-cloud \
+		IMAGE_EXTRA_FILE="/tmp/cloud-values.yaml" \
+		IMAGE_EXTRA_FILE_CONTENT="deploymentTool: amb-oper-azure"
 
 ci/publish-chart: chart-push
 

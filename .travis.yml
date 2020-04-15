@@ -85,12 +85,10 @@ jobs:
           script: make ci/publish-image
           skip_cleanup: true
         # publish the image to Azure
-        # NOTE: make sure DOCKER_USERNAME/DOCKER_PASSWORD have values for a bot
-        #       (from https://quay.io/repository/datawire/ambassador-operator?tab=settings)
         - provider: script
           on:
             all_branches: true
-          script: make ci/publish-image-cloud
+          script: make ci/publish-image-cloud/azure
           skip_cleanup: true
         # publish helm chart
         # NOTE: needs AWS_ACCESS_KEY_ID, AWS_BUCKET and AWS_SECRET_ACCESS_KEY (from keybase)

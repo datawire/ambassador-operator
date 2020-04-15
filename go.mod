@@ -10,7 +10,6 @@ require (
 	github.com/operator-framework/operator-sdk v0.15.0
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2 // indirect
-	golang.org/x/xerrors v0.0.0-20191011141410-1b5146add898 // indirect
 	gopkg.in/yaml.v2 v2.2.4
 	helm.sh/helm/v3 v3.0.1
 	k8s.io/api v0.17.1
@@ -20,6 +19,7 @@ require (
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/helm v2.16.1+incompatible
 	k8s.io/kubectl v0.17.1 // indirect
+	mvdan.cc/sh/v3 v3.1.0 // indirect
 	sigs.k8s.io/controller-runtime v0.4.0
 )
 
