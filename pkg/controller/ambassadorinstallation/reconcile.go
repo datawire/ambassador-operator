@@ -40,6 +40,17 @@ var (
 	defaultChartValues = map[string]string{
 		"deploymentTool": "amb-oper",
 	}
+
+	// defExtraValuesFiles defines a list of files where we can find extra values
+	// NOTE: values in the last files will overwrite values in previous files!
+	defExtraValuesFiles = []string{
+		"/etc/helm/values.yaml",
+		"/tmp/helm/values.yaml",
+		"/etc/values.yaml",
+		"/tmp/values.yaml",
+		"/tmp/cloud-values.yaml",
+		"/tmp/cloud-values.yaml",
+	}
 )
 
 var (
@@ -166,8 +177,24 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	for k, v := range defaultChartValues {
 		helmValues[k] = v
 	}
-	for k, v := range ambObj.Spec.HelmValues {
-		helmValues[k] = v
+	for _, f := range defExtraValuesFiles {
+		log.Info("Trying to load values from file", "file", f)
+		values, err := readValuesFile(f)
+		if err != nil {
+			log.Info("Error when loading file", "file", f, "error", err)
+			continue
+		}
+		for k, v := range values {
+			log.Info("Settings value from file", "file", f, "var", k, "value", v)
+			helmValues[k] = v
+		}
+	}
+	if len(ambObj.Spec.HelmValues) > 0 {
+		log.Info("Settings value from AmbassadorInstallation")
+		for k, v := range ambObj.Spec.HelmValues {
+			log.V(1).Info("Settings value from AmbassadorInstallation", "var", k, "value", v)
+			helmValues[k] = v
+		}
 	}
 
 	if len(ambObj.Spec.BaseImage) > 0 {

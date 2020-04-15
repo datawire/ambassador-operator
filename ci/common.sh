@@ -1,6 +1,6 @@
 #!/bin/bash
 
-common_sh_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
+common_sh_dir="$(cd "$(dirname ${BASH_SOURCE[0]})" >/dev/null 2>&1 && pwd)"
 [ -d "$common_sh_dir" ] || {
 	echo "FATAL: no current dir (maybe running in zsh?)"
 	exit 1
@@ -774,6 +774,10 @@ amb_get_pods() {
 	kubectl get pods $@ $AMB_POD_SELECTOR -o jsonpath='{.items[*].metadata.name}'
 }
 
+amb_get_pods_yaml() {
+	kubectl get pods $@ $AMB_POD_SELECTOR -o jsonpath='{.items[*].metadata.name}' -o yaml
+}
+
 amb_describe() {
 	kubectl describe $@ deployment ambassador
 }
@@ -1047,4 +1051,8 @@ oper_describe() {
 oper_wait_install() {
 	wait_deploy ambassador-operator $@ || return 1
 	passed "... the Ambassador operator is alive"
+}
+
+oper_get_random_pod() {
+    kubectl get pod $@ -l "name=ambassador-operator" -o jsonpath='{.items[0].metadata.name}'
 }

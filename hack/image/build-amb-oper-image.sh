@@ -12,5 +12,5 @@ source "$COMMON_FILE"
 
 set -eu
 
-info "(running 'operator-sdk build')"
+info "(running 'operator-sdk build' for $1)"
 operator-sdk build $1
