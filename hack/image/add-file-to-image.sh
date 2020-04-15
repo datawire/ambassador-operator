@@ -13,7 +13,7 @@ COMMON_FILE=$TOP_DIR/ci/common.sh
 
 ############################################################################################
 
-IMAGE="ambassador-operator:dev"
+IMAGE=""
 FILE_PATH=""
 CONTENT=""
 NEW_IMAGE=""
@@ -31,11 +31,11 @@ while [[ $# -gt 0 ]] && [[ "$1" == "--"* ]]; do
 
         # the image name
     "--image")
-        export IMAGE_NAME="$1"
+        export IMAGE="$1"
         shift
         ;;
     "--image="*)
-        export IMAGE_NAME="${opt#*=}"
+        export IMAGE="${opt#*=}"
         ;;
 
         # the file path
@@ -84,6 +84,7 @@ while [[ $# -gt 0 ]] && [[ "$1" == "--"* ]]; do
     esac
 done
 
+[ -n "$IMAGE" ] || abort "no --image provided"
 [ -n "$FILE_PATH" ] || abort "no --path provided"
 [ -n "$CONTENT" ] || abort "no --content provided"
 

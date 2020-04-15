@@ -124,6 +124,7 @@ clean: ## Clean up the build artifacts
 		build/_output $(ARTIFACTS_DIR) \
 		$(ARTIFACT_CRDS_MANIF) $(ARTIFACT_OPER_MANIF)
 	$(Q)docker rmi $(AMB_OPER_IMAGE) >/dev/null 2>&1 || /bin/true
+	$(Q)docker rmi $(REL_AMB_OPER_IMAGE) >/dev/null 2>&1 || /bin/true
 
 lint-dev:  ## Run golangci-lint with all checks enabled (development purpose only)
 	./hack/tests/check-lint.sh dev
@@ -320,7 +321,7 @@ ci/release: release-collect-manifests gen-crds-docs
 
 ci/publish-image: image-push
 
-ci/publish-image-cloud:
+ci/publish-image-cloud: clean
 	$(Q)[ -n "$(CLUSTER_REGISTRY)" ] || { echo "FATAL: no CLUSTER_REGISTRY defined" ; exit 1 ; }
 	$(Q)[ -n "$(CLUSTER_PROVIDER)" ] || { echo "FATAL: no CLUSTER_PROVIDER defined" ; exit 1 ; }
 	@echo ">>> Creating a registry in the cloud (with $(CLUSTER_REGISTRY))"
@@ -332,6 +333,7 @@ ci/publish-image-cloud/azure:
 	# for Azure, create an image with an extra Helm Values file.
 	# This file will be loaded automatically by the operator and used for setting
 	# some custom Helm variables like "deploymentTool"
+	$(Q)[ "$(CLUSTER_PROVIDER)" = "azure" ] || { echo "FATAL: CLUSTER_PROVIDER is not azure" ; exit 1 ; }
 	make ci/publish-image-cloud \
 		IMAGE_EXTRA_FILE="/tmp/cloud-values.yaml" \
 		IMAGE_EXTRA_FILE_CONTENT="deploymentTool: amb-oper-azure"

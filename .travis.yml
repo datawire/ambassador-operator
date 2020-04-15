@@ -63,6 +63,7 @@ jobs:
       # generate all the artifacts that will be published by the "deploy"
       before_deploy:
         - make ci/release
+        - make ci/cluster-setup
 
       # ... and then publish those artifacts, docs, push images, etc.
       deploy:

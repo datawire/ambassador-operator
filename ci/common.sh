@@ -1054,5 +1054,17 @@ oper_wait_install() {
 }
 
 oper_get_random_pod() {
-    kubectl get pod $@ -l "name=ambassador-operator" -o jsonpath='{.items[0].metadata.name}'
+    kubectl get pod $@ -l "name=ambassador-operator" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
+}
+
+amb_wait_kubectl_exec() {
+	local i=0
+	until [ $i -ge $DEF_WAIT_TIMEOUT ]; do
+        pod=$(oper_get_random_pod $@)
+        [ -n "$pod" ] && kubectl exec -it $@ "$pod" -- /bin/true && return 0
+        warn "no kubectl exec yet..."
+		i=$((i + 1))
+		sleep 1
+	done
+	return 1
 }
