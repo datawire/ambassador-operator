@@ -31,13 +31,26 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 		return reconcile.Result{}, nil
 	}
 
+	status := ambassador.StatusFor(o)
+
+	if err := chartsMgr.Download(); err != nil {
+		log.Error(err, "Failed to download latest release")
+		status.SetCondition(ambassador.AmbInsCondition{
+			Type:    ambassador.ConditionReleaseFailed,
+			Status:  ambassador.StatusTrue,
+			Reason:  ambassador.ReasonDownloadError,
+			Message: err.Error(),
+		})
+		_ = r.updateResourceStatus(o, status)
+		return reconcile.Result{RequeueAfter: r.checkInterval}, err
+	}
+	defer func() { _ = chartsMgr.Cleanup() }()
+
 	manager, err := chartsMgr.GetManagerFor(o)
 	defer func() { _ = chartsMgr.Cleanup() }()
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-
-	status := ambassador.StatusFor(o)
 
 	log.V(2).Info("Uninstalling release", "release", manager.ReleaseName())
 	_, err = manager.UninstallRelease(ctx)

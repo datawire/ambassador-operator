@@ -2,11 +2,7 @@ package ambassadorinstallation
 
 import (
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -18,19 +14,6 @@ func contains(l []string, s string) bool {
 		}
 	}
 	return false
-}
-
-// fileIsArchive returns True if the URL points to an archive
-func fileIsArchive(u url.URL) bool {
-	path := u.Path
-	ext := filepath.Ext(path)
-
-	switch ext {
-	case ".tar.gz", ".gz", ".zip":
-		return true
-	default:
-		return false
-	}
 }
 
 // parse a repo and tag from an image name
@@ -53,27 +36,6 @@ func getEnvDuration(name string, d time.Duration) time.Duration {
 		}
 	}
 	return updateInterval
-}
-
-// DownloadFile will download a url to a local file. It's efficient because it will
-// write as it downloads and not load the whole file into memory.
-func downloadFile(filepath string, url string) error {
-	resp, err := http.Get(url)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	// Create the file
-	out, err := os.Create(filepath)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = out.Close() }()
-
-	// Write the body to file
-	_, err = io.Copy(out, resp.Body)
-	return err
 }
 
 // fileExists checks if a file exists and is not a directory before we
