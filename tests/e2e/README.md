@@ -14,6 +14,7 @@ where OPTION can be (note: some values can also be provided with the 'env:' envi
   --image-name <NAME>       the image name
   --image-tag <TAG>         the image tag
   --cluster-provider <PRV>  the cluster provider to use (available: amazon azure dummy gke k3d kubernaut ) (env:CLUSTER_PROVIDER)
+  --helm-repo <REPO>        the Helm repo URL (or a TGZ file) (env:AMB_INSTALLATION_HELM_REPO)
   --keep                    keep the cluster after a failure (env:CLUSTER_KEEP)
   --reuse                   reuse the cluster between tests (remove the namespace) (env:CLUSTER_REUSE)
   --debug                   debug the shell script
@@ -29,6 +30,10 @@ Some important flags:
 
 - `--cluster-provider <PRV>`: use some specific cluster provider, like `k3d` or `azure`.  You can also use the
   `dummy` provider and use your own registry (with `--registry`) and kubeconfig (with `--kubeconfig`).
+- `--helm-repo <REPO>`: use a specific Helm repo, either a regular Helm repo URL or a URL pointing to a TGZ file.
+  For example, you can use one of the TGZs in the [Ambassador Helm releases](https://github.com/datawire/ambassador-chart/releases)
+  page. Note well that **forcing a particular Helm chart release will make some tests fail**, as
+  they test upgrades and this overrides the version heuristics. 
 - `--keep` prevents the cluster from being destroyed after running the test(s). 
 - `--reuse`: by default, the test runner destroy the cluster after every a test is ran and creates a new
   one for the following test. This flag instructs the test runner to reuse the cluster and just remove
@@ -36,7 +41,7 @@ Some important flags:
 
 ## Running all the tests
 
-You can run all the tests with just `check`:
+You can run all the tests from this directory with just `check`:
  
 ```shell script
   $ runner.sh --cluster-provider=k3d build check

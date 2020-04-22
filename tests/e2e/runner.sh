@@ -198,6 +198,7 @@ where OPTION can be (note: some values can also be provided with the 'env:' envi
   --image-name <NAME>       the image name
   --image-tag <TAG>         the image tag
   --cluster-provider <PRV>  the cluster provider to use (available: $cluster_providers) (env:CLUSTER_PROVIDER)
+  --helm-repo <REPO>        the Helm repo URL (or a TGZ file) (env:AMB_INSTALLATION_HELM_REPO)
   --keep                    keep the cluster after a failure (env:CLUSTER_KEEP)
   --reuse                   reuse the cluster between tests (remove the namespace) (env:CLUSTER_REUSE)
   --debug                   debug the shell script
@@ -277,6 +278,15 @@ while [[ $# -gt 0 ]] && [[ "$1" == "--"* ]]; do
 		;;
 	"--cluster-provider="*)
 		export CLUSTER_PROVIDER="${opt#*=}"
+		;;
+
+		# the Helm repo
+	"--helm-repo")
+		export AMB_INSTALLATION_HELM_REPO="$1"
+		shift
+		;;
+	"--helm-repo="*)
+		export AMB_INSTALLATION_HELM_REPO="${opt#*=}"
 		;;
 
 		# other things

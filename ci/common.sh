@@ -886,6 +886,7 @@ metadata:
   name: ${AMB_INSTALLATION_NAME}
 spec:
   version: "${version}"
+  helmRepo: "${AMB_INSTALLATION_HELM_REPO}"
   logLevel: info
 EOF
 	passed "... AmbassadorInstallation created successfully..."

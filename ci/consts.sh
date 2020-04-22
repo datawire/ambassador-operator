@@ -64,6 +64,10 @@ AMB_OPER_CHECK_INTERVAL="5s"
 # the name of the `AmbassadorInstallation` we will always create in tests, benchmarks, etc
 AMB_INSTALLATION_NAME="ambassador"
 
+# helm repository
+DEF_AMB_INSTALLATION_HELM_REPO="https://www.getambassador.io"
+AMB_INSTALLATION_HELM_REPO="${AMB_INSTALLATION_HELM_REPO:-$DEF_AMB_INSTALLATION_HELM_REPO}"
+
 ########################################################################################################################
 # tools
 ########################################################################################################################

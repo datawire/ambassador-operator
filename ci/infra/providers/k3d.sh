@@ -22,7 +22,7 @@ K3D_NETWORK_NAME="k3d-$K3D_CLUSTER_NAME"
 
 K3D_API_PORT=6444
 
-K3D_REGISTRY_NAME="${K3D_REGISTRY_NAME:-registry.local}"
+K3D_REGISTRY_NAME="${K3D_REGISTRY_NAME:-registry.localhost}"
 
 K3D_REGISTRY_PORT="${K3D_REGISTRY_PORT:-5000}"
 
@@ -30,7 +30,7 @@ K3D_REGISTRY="$K3D_REGISTRY_NAME:$K3D_REGISTRY_PORT"
 
 K3D_NUM_WORKERS=0
 
-K3D_ARGS="--wait=60 --name=$K3D_CLUSTER_NAME --api-port $K3D_API_PORT --enable-registry --registry-name ${K3D_REGISTRY_NAME} --registry-port ${K3D_REGISTRY_PORT} $K3D_EXTRA_ARGS"
+K3D_ARGS="--wait=60 --name=${K3D_CLUSTER_NAME} --api-port ${K3D_API_PORT} --enable-registry --registry-name ${K3D_REGISTRY_NAME} --registry-port ${K3D_REGISTRY_PORT} ${K3D_EXTRA_ARGS}"
 
 #########################################################################################
 
