@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ambassador "github.com/datawire/ambassador-operator/pkg/apis/getambassador/v2"
+	"github.com/datawire/ambassador/pkg/helm"
 )
 
 // note: base on the code of the Helm operator:
@@ -220,7 +221,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	}
 
 	// create a new parsed checker for versions
-	chartVersion, err := NewChartVersionRule(ambObj.Spec.Version)
+	chartVersion, err := helm.NewChartVersionRule(ambObj.Spec.Version)
 	if err != nil {
 		message := fmt.Sprintf("could not parse version from %q", ambObj.Spec.Version)
 		status.SetCondition(ambassador.AmbInsCondition{
@@ -233,8 +234,15 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		return reconcile.Result{}, err
 	}
 
+	options := HelmManagerOptions{
+		Manager: r.Manager,
+		HelmDownloaderOptions: helm.HelmDownloaderOptions{
+			URL:     ambObj.Spec.HelmRepo,
+			Version: chartVersion,
+		},
+	}
 	// create a new manager for the remote Helm repo URL
-	chartsMgr, err := NewHelmManager(r.Manager, ambObj.Spec.HelmRepo, chartVersion, helmValues)
+	chartsMgr, err := NewHelmManager(options, helmValues)
 	if err != nil {
 		return reconcile.Result{}, err
 	}

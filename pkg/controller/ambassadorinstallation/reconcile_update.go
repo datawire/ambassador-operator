@@ -59,6 +59,19 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 		}
 	}
 
+	if err := chartsMgr.Download(); err != nil {
+		log.Error(err, "Failed to download latest release")
+		status.SetCondition(ambassador.AmbInsCondition{
+			Type:    ambassador.ConditionReleaseFailed,
+			Status:  ambassador.StatusTrue,
+			Reason:  ambassador.ReasonDownloadError,
+			Message: err.Error(),
+		})
+		_ = r.updateResourceStatus(ambObj, status)
+		return reconcile.Result{RequeueAfter: r.checkInterval}, err
+	}
+	defer func() { _ = chartsMgr.Cleanup() }()
+
 	chart, err := chartsMgr.GetManagerFor(ambObj)
 	defer func() { _ = chartsMgr.Cleanup() }()
 	if err != nil {
@@ -84,7 +97,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 	if !chart.IsInstalled() {
 		log.Info("Ambassador is not currently installed: installing...",
 			"newVersion", chartsMgr.GetVersionRule().String())
-		for k, v := range chartsMgr.GetValues() {
+		for k, v := range chartsMgr.Values {
 			r.EventRecorder.Eventf(ambObj, "Warning", "OverrideValuesInUse",
 				"Chart value %q overridden to %q by Ambassador operator", k, v)
 		}
@@ -141,7 +154,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 		log.Info("Ambassador is currently installed, but an upgrade is required",
 			"newVersion", chartsMgr.GetVersionRule().String())
 
-		for k, v := range chartsMgr.GetValues() {
+		for k, v := range chartsMgr.Values {
 			r.EventRecorder.Eventf(ambObj, "Warning", "OverrideValuesInUse",
 				"Chart value %q overridden to %q by Ambassador operator", k, v)
 		}

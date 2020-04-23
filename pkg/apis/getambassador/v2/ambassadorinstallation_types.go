@@ -152,6 +152,7 @@ const (
 	ReasonUninstallSuccessful AmbInsConditionReason = "UninstallSuccessful"
 	ReasonInstallError        AmbInsConditionReason = "InstallError"
 	ReasonUpdateError         AmbInsConditionReason = "UpdateError"
+	ReasonDownloadError       AmbInsConditionReason = "DownloadError"
 	ReasonReconcileError      AmbInsConditionReason = "ReconcileError"
 	ReasonUninstallError      AmbInsConditionReason = "UninstallError"
 	ReasonParametersError     AmbInsConditionReason = "ParametersError"

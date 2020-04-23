@@ -28,9 +28,9 @@ endif
 AMB_OPER_IMAGE      ?= $(AMB_OPER_BASE_IMAGE):$(AMB_OPER_TAG)
 AMB_OPER_ARCHES     :="amd64"
 
-AMB_OPER_PKGS        = $(shell go list ./... | grep -v /vendor/)
-AMB_OPER_SRCS        = $(shell find . -name '*.go' -not -path "*/vendor/*")
-AMB_OPER_SHS         = $(shell find . -name '*.sh' -not -path "*/vendor/*")
+AMB_OPER_PKGS        = $(shell go list ./...)
+AMB_OPER_SRCS        = $(shell find . -name '*.go')
+AMB_OPER_SHS         = $(shell find . -name '*.sh')
 
 # manifests that must be loaded (order matters)
 AMB_NS               = "ambassador"
@@ -71,7 +71,6 @@ DOCS_API_DIR         := docs/api
 AMB_OPER_CHART_VALS  := deploy/helm/ambassador-operator/values.yaml
 
 # Go flags
-#GO_FLAGS            = -mod=vendor
 GO_FLAGS             =
 
 CLUSTER_PROVIDER    ?= k3d
@@ -135,12 +134,6 @@ lint-fix: ## Run golangci-lint automatically fix (development purpose only)
 lint: ## Run golangci-lint with all checks enabled in the ci
 	$(Q)./hack/tests/check-lint.sh ci
 
-vendor: ## Updates the /vendor directory
-	$(Q)if [ -z "$$IS_CI" ] ; then \
-		echo ">>> Updating/tidying up /vendor" ; \
-  		go mod vendor && go mod tidy ; \
-  	fi
-.PHONY: vendor
 
 ##############################
 # Generate Artifacts         #
@@ -218,7 +211,7 @@ build/ambassador-operator-%-x86_64-apple-darwin: GOARGS = GOOS=darwin GOARCH=amd
 build/ambassador-operator-%-ppc64le-linux-gnu: GOARGS = GOOS=linux GOARCH=ppc64le
 build/ambassador-operator-%-linux-gnu: GOARGS = GOOS=linux
 
-build/%: $(AMB_OPER_SRCS) vendor
+build/%: $(AMB_OPER_SRCS)
 	@echo ">>> Building $@"
 	$(Q)$(GOARGS) go build \
 		-gcflags "all=-trimpath=${GOPATH}" \
@@ -285,12 +278,12 @@ create-namespace:
 load-crds: create-namespace release-collect-manifests  ## Load the CRDs in the current cluster
 	@echo ">>> Loading CRDs"
 	$(Q)[ -n $KUBECONFIG ] || echo "WARNING: no KUBECONFIG defined: using default kubeconfig"
-	$(Q)kubectl apply -f $(ARTIFACT_CRDS_MANIF)
+	$(Q)kubectl apply -n $(AMB_NS) -f $(ARTIFACT_CRDS_MANIF)
 
 load: create-namespace release-collect-manifests load-crds   ## Load the CRDs and manifests in the current cluster
 	@echo ">>> Loading manifests (with REPLACE_IMAGE=$(AMB_OPER_IMAGE))"
 	$(Q)[ -n $KUBECONFIG ] || echo "WARNING: no KUBECONFIG defined: using default kubeconfig"
-	$(Q)kubectl apply -f $(ARTIFACT_OPER_MANIF)
+	$(Q)kubectl apply -n $(AMB_NS) -f $(ARTIFACT_OPER_MANIF)
 
 live: build load-crds ## Try to run the operator in the current cluster pointed by KUBECONFIG
 	$(Q)[ -n $KUBECONFIG ] || echo "WARNING: no DEV_KUBECONFIG defined: using default $(DEV_KUBECONFIG)"
