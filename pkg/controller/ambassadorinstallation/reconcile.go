@@ -226,7 +226,14 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	}
 
 	if ambObj.Spec.InstallOSS {
-		helmValues["enableAES"] = "false"
+		// This is a huge HACK! The line below should have been -
+		// helmValues["enableAES"] = false
+		// but NewHelmManager and its guts only accept map[string]string which is wrong, because not all Helm values
+		// are map[string]string.
+		// However, we found out that all objects in ambObj["spec"] are passed to Helm by NewManager, so that is what
+		// this code is doing.
+		ambIns.Object["spec"].(map[string]interface{})["enableAES"] = false
+
 		// We do not want to update image.repository and image.tag if they have already been populated by user supplied
 		// configuration.
 		if len(helmValues["image.repository"]) == 0 && len(helmValues["image.tag"]) == 0 {
