@@ -122,3 +122,5 @@ force system updates to happen late at night if that’s what the sysadmins want
         - port: "80"
           host: "example"
     ```
+  * Note that, `spec.helmValues.enableAES` should not conflict with the `spec.installOSS` field or else your
+    installation will error out.
