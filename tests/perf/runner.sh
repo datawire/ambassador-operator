@@ -8,8 +8,8 @@ runner_sh_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
 TOP_DIR="$runner_sh_dir/../.."
 
-# shellcheck source=../../ci/infra/providers.sh
-source "$TOP_DIR/ci/infra/providers.sh"
+# shellcheck source=../../ci/cluster-providers/providers.sh
+source "$TOP_DIR/ci/cluster-providers/providers.sh"
 
 user=$(whoami)
 num="${TRAVIS_BUILD_ID:-0}"

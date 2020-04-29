@@ -1,0 +1,3 @@
+[submodule "ci/cluster-providers"]
+	path = ci/cluster-providers
+	url = https://github.com/datawire/cluster-providers.git
