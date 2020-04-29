@@ -231,7 +231,6 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		// configuration.
 		if len(helmValues["image.repository"]) == 0 && len(helmValues["image.tag"]) == 0 {
 			helmValues["image.repository"] = "quay.io/datawire/ambassador"
-			helmValues["image.tag"] = "1.4.2"
 		}
 	}
 
