@@ -102,6 +102,16 @@ the last time there was a transition to this condition..</p>
   <a href="https://github.com/helm/charts/tree/master/stable/ambassador#configuration">current list of values</a>
   and their default values.</p>
 
+* `installOSS` - bool  <p>Installs <a href="https://www.getambassador.io/docs/latest/topics/install/install-ambassador-oss/">Ambassador OSS</a>
+  instead of <a href="https://www.getambassador.io/docs/latest/topics/install/">AES</a>.
+  Default is false which means it installs AES by default.
+  TODO:
+  1. AES/AOSS is not installed and the user installs using <code>installOSS: true</code>, then we straightaway install AOSS.
+  2. AOSS is installed via operator and the user sets <code>installOSS: false</code>, then we perform the migration as
+     detailed here - <a href="https://www.getambassador.io/docs/latest/topics/install/upgrade-to-edge-stack/">https://www.getambassador.io/docs/latest/topics/install/upgrade-to-edge-stack/</a>
+  3. AES is installed and the user sets <code>installOSS: true</code>, then we point users to the docs which gives them
+     pointers on how to do that themselves.</p>
+
 ## <a name="getambassador.io/v2.AmbassadorInstallationStatus">`AmbassadorInstallationStatus`
    _(Appears on:<a href="#getambassador.io/v2.AmbassadorInstallation">AmbassadorInstallation</a>)_
 
