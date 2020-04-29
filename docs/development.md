@@ -39,7 +39,7 @@ to the next step.
 
 Our CI system uses K3D by default for running the end-to-end test execution, but you can
 specify a different environment by setting the `CLUSTER_PROVIDER` variable to one of the
-cluster providers in the `ci/infra/providers` directory.
+cluster providers in the `ci/cluster-providers/providers` directory.
 
 
 ### Build
@@ -97,6 +97,14 @@ or from your preferred debugger.
 
 The Ambassador Operator has both unit and end-to-end tests. 
 
+### Cluster providers
+
+To update the cluster-providers just run:
+
+```commandline
+$ git submodule update --remote --merge
+```
+
 ### Unit tests
 
 Used to validate the basic logic of the functions. Unit tests can be triggered
@@ -112,7 +120,7 @@ Used to validate that the operator deployment and the expected behavior
 are working. During end-to-end tests the following steps are executed:
 
 - A local Kubernetes deployment is started, using some of the supported
-  [cluster providers](https://github.com/datawire/ambassador-operator/tree/master/ci/infra).
+  [cluster providers](https://github.com/datawire/ambassador-operator/tree/master/ci/cluster-providers).
   By default, a [`k3d`](https://github.com/rancher/k3d) cluster will be used.
 - A Docker image is built for the Operator.
 - The provided tests are executed. 

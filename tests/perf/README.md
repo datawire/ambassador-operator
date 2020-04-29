@@ -40,7 +40,7 @@ where OPTION can be (note: some values can also be provided with the 'env:' envi
   ```  
   Some important notes:
   - cluster providers will probably require some kind of credentials. Take a look at
-    the cluster providers in `/ci/infra/providers` for instructions on getting these
+    the cluster providers in `/ci/cluster-providers/providers` for instructions on getting these
     credentials. They usually need to save them in some file and/or setting some env vars... 
   - You can also use any already existing cluster with the `dummy` cluster provider, with
     `--cluster-provider=dummy`. This provider will just dump any `KUBECONFIG` and `DEV_REGISTRY`

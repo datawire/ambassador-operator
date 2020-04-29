@@ -33,7 +33,7 @@ release something from your laptop.
 
 - Determine the tag we will use for the image version, `AMB_OPER_TAG`.
 - Get a credentials file for Azure, as described in the
-  [credentials document](https://github.com/datawire/ambassador-operator/blob/master/ci/infra/CREDENTIALS.md#Azure).
+  [credentials document](https://github.com/datawire/ambassador-operator/blob/master/ci/cluster-providers/CREDENTIALS.md#Azure).
 - Go to https://portal.azure.com/ and create a _Resource Group_, or use an existing one
   (like the default ones, like `DefaultResourceGroup-EUS`).
 - Run the following command:

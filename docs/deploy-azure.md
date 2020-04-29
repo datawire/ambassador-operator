@@ -52,6 +52,6 @@ as described in the [users guide](using.md).
 ## Running the performance or end-to-end tests in Azure
 
 In order to run the performance or the end-to-end tests on Azure, you need to obtain some credentials for Azure.
-See the [credentials document](https://github.com/datawire/ambassador-operator/blob/master/ci/infra/CREDENTIALS.md#Azure)
+See the [credentials document](https://github.com/datawire/ambassador-operator/blob/master/ci/cluster-providers/CREDENTIALS.md#Azure)
 and set `AZ_AUTH_FILE` to the credentials file you have downloaded.
 

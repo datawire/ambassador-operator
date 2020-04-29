@@ -318,8 +318,8 @@ ci/publish-image-cloud: clean
 	$(Q)[ -n "$(CLUSTER_REGISTRY)" ] || { echo "FATAL: no CLUSTER_REGISTRY defined" ; exit 1 ; }
 	$(Q)[ -n "$(CLUSTER_PROVIDER)" ] || { echo "FATAL: no CLUSTER_PROVIDER defined" ; exit 1 ; }
 	@echo ">>> Creating a registry in the cloud (with $(CLUSTER_REGISTRY))"
-	$(Q)./ci/infra/providers.sh create-registry && \
-		eval `./ci/infra/providers.sh get-env 2>/dev/null` && \
+	$(Q)./ci/cluster-providers/providers.sh create-registry && \
+		eval `./ci/cluster-providers/providers.sh get-env 2>/dev/null` && \
 		REL_REGISTRY="$$DEV_REGISTRY" make ci/publish-image
 
 ci/publish-image-cloud/azure:
@@ -340,11 +340,11 @@ ci/after-success: ci/publish-coverage
 
 ci/cluster-setup:
 	@echo ">>> Setting up cluster-provider CI"
-	$(Q)./ci/infra/providers.sh setup
+	$(Q)./ci/cluster-providers/providers.sh setup
 
 ci/cluster-cleanup:
 	@echo ">>> Cleaning up cluster-provider CI"
-	$(Q)./ci/infra/providers.sh cleanup
+	$(Q)./ci/cluster-providers/providers.sh cleanup
 
 ci/setup:
 	@echo ">>> Setting up CI"

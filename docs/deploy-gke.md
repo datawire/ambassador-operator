@@ -44,6 +44,6 @@ as described in the [users guide](using.md).
 ## Running the performance or end-to-end tests in GKE
 
 In order to run the performance or the end-to-end tests on GKE, you need to obtain some credentials for GKE.
-See the [credentials document](https://github.com/datawire/ambassador-operator/blob/master/ci/infra/CREDENTIALS.md#GKE)
+See the [credentials document](https://github.com/datawire/ambassador-operator/blob/master/ci/cluster-providers/CREDENTIALS.md#GKE)
 and set `GKE_AUTH_FILE` to the credentials file you have downloaded.
 
