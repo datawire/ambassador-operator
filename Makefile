@@ -76,6 +76,12 @@ GO_FLAGS             =
 CLUSTER_PROVIDER    ?= k3d
 export CLUSTER_PROVIDER
 
+CLUSTER_PROVIDERS   ?= $(shell realpath ./ci/cluster-providers)
+export CLUSTER_PROVIDERS
+
+# the repo used for generating the API docs
+GEN_CRD_API_REPO =  github.com/inercia/gen-crd-api-reference-docs
+
 export CGO_ENABLED:=0
 export GO111MODULE:=on
 export GO15VENDOREXPERIMENT:=1
@@ -158,7 +164,7 @@ gen-crds-docs: ## Generate the docs for the CRDs
 	@echo ">>> Generating API docs..."
 	$(Q)command -v gen-crd-api-reference-docs >/dev/null || { \
   		echo "FATAL: gen-crd-api-reference-docs not installed" ; \
-  		echo "FATAL: just run 'go get github.com/ahmetb/gen-crd-api-reference-docs'" ; \
+  		echo "FATAL: just run 'go get $(GEN_CRD_API_REPO)'" ; \
   		exit 1 ; \
   	}
 	$(Q)gen-crd-api-reference-docs \
@@ -318,8 +324,8 @@ ci/publish-image-cloud: clean
 	$(Q)[ -n "$(CLUSTER_REGISTRY)" ] || { echo "FATAL: no CLUSTER_REGISTRY defined" ; exit 1 ; }
 	$(Q)[ -n "$(CLUSTER_PROVIDER)" ] || { echo "FATAL: no CLUSTER_PROVIDER defined" ; exit 1 ; }
 	@echo ">>> Creating a registry in the cloud (with $(CLUSTER_REGISTRY))"
-	$(Q)./ci/cluster-providers/providers.sh create-registry && \
-		eval `./ci/cluster-providers/providers.sh get-env 2>/dev/null` && \
+	$(Q)$(CLUSTER_PROVIDERS)/providers.sh create-registry && \
+		eval `$(CLUSTER_PROVIDERS)/providers.sh get-env 2>/dev/null` && \
 		REL_REGISTRY="$$DEV_REGISTRY" make ci/publish-image
 
 ci/publish-image-cloud/azure:
@@ -340,11 +346,11 @@ ci/after-success: ci/publish-coverage
 
 ci/cluster-setup:
 	@echo ">>> Setting up cluster-provider CI"
-	$(Q)./ci/cluster-providers/providers.sh setup
+	$(Q)$(CLUSTER_PROVIDERS)/providers.sh setup
 
 ci/cluster-cleanup:
 	@echo ">>> Cleaning up cluster-provider CI"
-	$(Q)./ci/cluster-providers/providers.sh cleanup
+	$(Q)$(CLUSTER_PROVIDERS)/providers.sh cleanup
 
 ci/setup:
 	@echo ">>> Setting up CI"

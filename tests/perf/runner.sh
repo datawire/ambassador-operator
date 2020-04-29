@@ -8,8 +8,11 @@ runner_sh_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 
 TOP_DIR="$runner_sh_dir/../.."
 
+CLUSTER_PROVIDERS=${CLUSTER_PROVIDERS:-$TOP_DIR/ci/cluster-providers}
+[ -d $CLUSTER_PROVIDERS ] || { echo "FATAL: no cluster providers in $CLUSTER_PROVIDERS" ; exit 1 ; }
+
 # shellcheck source=../../ci/cluster-providers/providers.sh
-source "$TOP_DIR/ci/cluster-providers/providers.sh"
+source "$CLUSTER_PROVIDERS/providers.sh"
 
 user=$(whoami)
 num="${TRAVIS_BUILD_ID:-0}"
