@@ -68,6 +68,17 @@ type AmbassadorInstallationSpec struct {
 	// [current list of values](https://github.com/helm/charts/tree/master/stable/ambassador#configuration)
 	// and their default values.
 	HelmValues map[string]string `json:"helmValues,omitempty"`
+
+	// Installs [Ambassador OSS](https://www.getambassador.io/docs/latest/topics/install/install-ambassador-oss/)
+	// instead of [AES](https://www.getambassador.io/docs/latest/topics/install/).
+	// Default is false which means it installs AES by default.
+	// TODO:
+	// 1. AES/AOSS is not installed and the user installs using `installOSS: true`, then we straightaway install AOSS.
+	// 2. AOSS is installed via operator and the user sets `installOSS: false`, then we perform the migration as
+	//    detailed here - https://www.getambassador.io/docs/latest/topics/install/upgrade-to-edge-stack/
+	// 3. AES is installed and the user sets `installOSS: true`, then we point users to the docs which gives them
+	//    pointers on how to do that themselves.
+	InstallOSS bool `json:"installOSS,omitempty"`
 }
 
 // AmbassadorInstallationStatus defines the observed state of AmbassadorInstallation

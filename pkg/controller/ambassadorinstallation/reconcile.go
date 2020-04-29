@@ -198,6 +198,16 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		}
 	}
 
+	// `enableAES: true` means `installOSS: false`
+	// `enableAES: false` means `installOSS: true`
+	// Throw an error if these fields are inconsistent with each other
+	if (ambObj.Spec.HelmValues["enableAES"] == "false" && ambObj.Spec.InstallOSS == false) ||
+		(ambObj.Spec.HelmValues["enableAES"] == "true" && ambObj.Spec.InstallOSS == true) {
+		log.Info("helmValues.enableAES and installOSS fields conflict with each other",
+			"enableAES", ambObj.Spec.HelmValues["enableAES"], "installOSS", ambObj.Spec.InstallOSS)
+		return reconcile.Result{}, fmt.Errorf("helmValues.enableAES and installOSS fields conflict with each other")
+	}
+
 	if len(ambObj.Spec.BaseImage) > 0 {
 		repo, tag, err := parseRepoTag(ambObj.Spec.BaseImage)
 		if err != nil {
@@ -213,6 +223,16 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		reqLogger.Info("Using custom base image", "repo", repo, "tag", tag)
 		helmValues["image.repository"] = repo
 		helmValues["image.tag"] = tag
+	}
+
+	if ambObj.Spec.InstallOSS {
+		helmValues["enableAES"] = "false"
+		// We do not want to update image.repository and image.tag if they have already been populated by user supplied
+		// configuration.
+		if len(helmValues["image.repository"]) == 0 && len(helmValues["image.tag"]) == 0 {
+			helmValues["image.repository"] = "quay.io/datawire/ambassador"
+			helmValues["image.tag"] = "1.4.2"
+		}
 	}
 
 	if len(ambObj.Spec.LogLevel) > 0 {
