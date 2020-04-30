@@ -85,38 +85,15 @@ force system updates to happen late at night if that’s what the sysadmins want
   the Ambassador chart with some overriden values. Take a look at
   the [current list of values](https://github.com/helm/charts/tree/master/stable/ambassador#configuration)
   and their default values.
-  
-  You must take into account some rules when settings values for the Helm chart:
-  * You must use a backslash to escape the `,` characters:
+
+  Examples:    
     ```yaml
-    helmValues:
-      name: "value1\,value2"
-    ```
-    You must escape _dot_ sequences as well, which may come in handy when charts use the `toYaml`
-    function to parse annotations, labels and node selectors. So you must use:
-    ```yaml
-    # this is valid
-    helmValues:
-      nodeSelector.kubernetes\.io/role: master
-    ```
-    instead of:  
-    ```yaml
-    # this is NOT valid
     helmValues:
       nodeSelector:
         kubernetes.io/role: master
     ```
-  * Complex data structures must be _collapsed_, using dots for separating all the elements in a tree
-    and `[]` for creating lists. For example, you should use:
+
     ```yaml
-    # this is valid
-    helmValues:
-      servers[0].port: "80"
-      servers[0].host: "example"
-    ```
-    instead of:
-    ```yaml
-    # this is NOT valid
     helmValues:
       servers:
         - port: "80"

@@ -63,12 +63,6 @@ type AmbassadorInstallationSpec struct {
 	//   sooner/later than expected.
 	UpdateWindow string `json:"updateWindow,omitempty"`
 
-	// An optional map of configurable parameters of the Ambassador chart with
-	// some overridden values. Take a look at the
-	// [current list of values](https://github.com/helm/charts/tree/master/stable/ambassador#configuration)
-	// and their default values.
-	HelmValues map[string]string `json:"helmValues,omitempty"`
-
 	// Installs [Ambassador OSS](https://www.getambassador.io/docs/latest/topics/install/install-ambassador-oss/)
 	// instead of [AES](https://www.getambassador.io/docs/latest/topics/install/).
 	// Default is false which means it installs AES by default.
