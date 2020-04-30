@@ -212,7 +212,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
                                   Message: fmt.Sprintf("helmValues.enableAES and installOSS fields conflict with each other"),
               })
               _ = r.updateResourceStatus(ambIns, status)
-              return reconcile.Result{}, err
+              return reconcile.Result{}, fmt.Errorf("helmValues.enableAES and installOSS fields conflict with each other")
 	}
 
 	if len(ambObj.Spec.BaseImage) > 0 {
