@@ -205,7 +205,14 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		(ambObj.Spec.HelmValues["enableAES"] == "true" && ambObj.Spec.InstallOSS == true) {
 		log.Info("helmValues.enableAES and installOSS fields conflict with each other",
 			"enableAES", ambObj.Spec.HelmValues["enableAES"], "installOSS", ambObj.Spec.InstallOSS)
-		return reconcile.Result{}, fmt.Errorf("helmValues.enableAES and installOSS fields conflict with each other")
+              status.SetCondition(ambassador.AmbInsCondition{
+                                  Type:    ambassador.ConditionReleaseFailed,
+                                  Status:  ambassador.StatusTrue,
+                                  Reason:  ambassador.ReasonParametersError,
+                                  Message: fmt.Sprintf("helmValues.enableAES and installOSS fields conflict with each other"),
+              })
+              _ = r.updateResourceStatus(ambIns, status)
+              return reconcile.Result{}, err
 	}
 
 	if len(ambObj.Spec.BaseImage) > 0 {
