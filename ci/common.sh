@@ -772,7 +772,7 @@ amb_get_image_tag() {
 # get the repository part of the image in the Ambassador deployment
 # (ie, "quay.io/datawire/aes:1.1.0" -> quay.io/datawire/aes)
 amb_get_image_repository() {
-	echo "$(amb_get_image $@)" | cut -d ":" -f1
+	echo "$(amb_get_image $@)" | rev | cut -d ":" -f2- | rev
 }
 
 # gte the list of pods of ambassador
