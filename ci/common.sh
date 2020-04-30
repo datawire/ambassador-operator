@@ -769,6 +769,12 @@ amb_get_image_tag() {
 	echo "$(amb_get_image $@)" | rev | cut -d ":" -f1 | rev
 }
 
+# get the repository part of the image in the Ambassador deployment
+# (ie, "quay.io/datawire/aes:1.1.0" -> quay.io/datawire/aes)
+amb_get_image_repository() {
+	echo "$(amb_get_image $@)" | cut -d ":" -f1
+}
+
 # gte the list of pods of ambassador
 amb_get_pods() {
 	kubectl get pods $@ $AMB_POD_SELECTOR -o jsonpath='{.items[*].metadata.name}'
@@ -799,6 +805,25 @@ amb_check_image_tag() {
 		return 1
 	fi
 	info "${deployed_version} matches the expected version (${expected_version})"
+}
+
+# amb_check_image_repository <REPO> <KUBECTL_ARGS...>
+# check that the Ambassador image has repository <REPOSITORY>
+amb_check_image_repository() {
+	local expected_repo="$1"
+	shift
+
+	local deployed_repo=$(amb_get_image_repository $@)
+	if [ -z "$deployed_repo" ]; then
+		warn "could not obtain Ambassador repository: it is empty"
+		return 1
+	fi
+	info "Current Ambassador deployment: $deployed_repo"
+	if [ "$deployed_repo" != "$expected_repo" ]; then
+		warn "expected ($expected_repo) and actual ($deployed_repo) Ambassador repository do not match"
+		return 1
+	fi
+	info "${deployed_repo} matches the expected repository (${expected_repo})"
 }
 
 # amb_wait_image_tag <VERSION> <KUBECTL_ARGS...>
@@ -909,6 +934,39 @@ spec:
   logLevel: info
 EOF
 	passed "... AmbassadorInstallation created successfully..."
+}
+
+# apply_amb_inst_oss...>
+# apply an `AmbassadorInstallation` with a `installOSS: true`
+apply_amb_inst_oss() {
+	info "Creating an AmbassadorInstallation with 'installOSS: true'..."
+	cat <<EOF | kubectl apply $@ -f -
+apiVersion: getambassador.io/v2
+kind: AmbassadorInstallation
+metadata:
+  name: ${AMB_INSTALLATION_NAME}
+spec:
+  installOSS: true
+  logLevel: info
+EOF
+	passed "... AmbassadorInstallation created successfully..."
+}
+
+# kube_check_resource_empty "resource name" "kubectl args"
+# check if a resource is present in Kubernetes
+# returns 1 if exists, 0 if does not exist
+kube_check_resource_empty() {
+    local kube_resource="$1"
+    shift
+
+    info "Checking if Kubernetes resource $kube_resource exists"
+    if [[ $(kubectl get "$kube_resource" $@ 2> /dev/null) ]]; then
+        info "... Kubernetes resource $kube_resource exists"
+        return 1
+    else
+        info "... Kubernetes resource $kube_resource does not exist"
+        return 0
+    fi
 }
 
 # amb_inst_delete <KUBECTL_ARGS...>
