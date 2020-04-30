@@ -5,7 +5,15 @@ metadata:
 spec:
   version: "1.*"
   helmValues:
-    service.ports[0].name: "http"
-    service.ports[0].port: "80"
-    service.ports[0].targetPort: "8080"
+    image:
+      pullPolicy: Always
+    namespace:
+      name: ambassador
+    service:
+      ports:
+        - name: http
+          port: 80
+          targetPort: 8080
+      type: NodePort
+
 

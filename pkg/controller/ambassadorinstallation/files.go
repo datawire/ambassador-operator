@@ -14,8 +14,8 @@ var (
 	errParseError = errors.New("error when parsing YAML")
 )
 
-func readValues(in []byte) (HelmValues, error) {
-	var output HelmValues
+func readValues(in []byte) (HelmValuesStrings, error) {
+	var output HelmValuesStrings
 
 	if err := yaml.Unmarshal(in, &output); err != nil {
 		return nil, fmt.Errorf("%w: %s", errParseError, in)
@@ -23,7 +23,7 @@ func readValues(in []byte) (HelmValues, error) {
 	return output, nil
 }
 
-func readValuesFile(file string) (HelmValues, error) {
+func readValuesFile(file string) (HelmValuesStrings, error) {
 	if !fileExists(file) {
 		return nil, errFileDoesNotExist
 	}

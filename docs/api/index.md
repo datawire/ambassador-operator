@@ -97,11 +97,6 @@ the last time there was a transition to this condition..</p>
   sooner/later than expected.</li>
   </ul>
 
-* `helmValues` - map[string]string  <p>An optional map of configurable parameters of the Ambassador chart with
-  some overridden values. Take a look at the
-  <a href="https://github.com/helm/charts/tree/master/stable/ambassador#configuration">current list of values</a>
-  and their default values.</p>
-
 * `installOSS` - bool  <p>Installs <a href="https://www.getambassador.io/docs/latest/topics/install/install-ambassador-oss/">Ambassador OSS</a>
   instead of <a href="https://www.getambassador.io/docs/latest/topics/install/">AES</a>.
   Default is false which means it installs AES by default.

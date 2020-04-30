@@ -15,8 +15,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	ambassador "github.com/datawire/ambassador-operator/pkg/apis/getambassador/v2"
 	"github.com/datawire/ambassador/pkg/helm"
+
+	ambassador "github.com/datawire/ambassador-operator/pkg/apis/getambassador/v2"
 )
 
 // note: base on the code of the Helm operator:
@@ -34,6 +35,9 @@ const (
 
 	// controller name for the events recorder
 	defControllerName = "ambassador-controller"
+
+	// default image used for the OSS version
+	defOSSImageRepository = "quay.io/datawire/ambassador"
 )
 
 var (
@@ -129,10 +133,12 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		return reconcile.Result{}, err
 	}
 
+	spec := ambObj.Spec
 	status := ambassador.StatusFor(ambIns)
+	specHelmValues := GetHelmValuesFrom(ambIns) // values passes in the spec: just for reading
 
 	// check if this AmbassadorInstallation was marked as a Duplicate in the past
-	lastDuplicateCondition := ambObj.Status.LastCondition(ambassador.AmbInsCondition{Reason: ambassador.ReasonDuplicateError})
+	lastDuplicateCondition := status.LastCondition(ambassador.AmbInsCondition{Reason: ambassador.ReasonDuplicateError})
 	if lastDuplicateCondition.Reason == ambassador.ReasonDuplicateError {
 		reqLogger.Info("AmbassadorInstallation marked as duplicate: ignored")
 		return reconcile.Result{}, nil
@@ -173,10 +179,11 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	})
 	status.RemoveCondition(ambassador.ConditionIrreconcilable)
 
+	helmValuesStrings := HelmValuesStrings{}
+
 	// copy all the values, both from the default values as from the user provided ones
-	helmValues := HelmValues{}
 	for k, v := range defaultChartValues {
-		helmValues[k] = v
+		helmValuesStrings[k] = v
 	}
 	for _, f := range defExtraValuesFiles {
 		log.Info("Trying to load values from file", "file", f)
@@ -187,76 +194,80 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		}
 		for k, v := range values {
 			log.Info("Settings value from file", "file", f, "var", k, "value", v)
-			helmValues[k] = v
-		}
-	}
-	if len(ambObj.Spec.HelmValues) > 0 {
-		log.Info("Settings value from AmbassadorInstallation")
-		for k, v := range ambObj.Spec.HelmValues {
-			log.V(1).Info("Settings value from AmbassadorInstallation", "var", k, "value", v)
-			helmValues[k] = v
+			helmValuesStrings[k] = v
 		}
 	}
 
 	// `enableAES: true` means `installOSS: false`
 	// `enableAES: false` means `installOSS: true`
 	// Throw an error if these fields are inconsistent with each other
-	if (ambObj.Spec.HelmValues["enableAES"] == "false" && ambObj.Spec.InstallOSS == false) ||
-		(ambObj.Spec.HelmValues["enableAES"] == "true" && ambObj.Spec.InstallOSS == true) {
-		log.Info("helmValues.enableAES and installOSS fields conflict with each other",
-			"enableAES", ambObj.Spec.HelmValues["enableAES"], "installOSS", ambObj.Spec.InstallOSS)
-		status.SetCondition(ambassador.AmbInsCondition{
-			Type:    ambassador.ConditionReleaseFailed,
-			Status:  ambassador.StatusTrue,
-			Reason:  ambassador.ReasonParametersError,
-			Message: fmt.Sprintf("helmValues.enableAES and installOSS fields conflict with each other"),
-		})
-		_ = r.updateResourceStatus(ambIns, status)
-		return reconcile.Result{}, fmt.Errorf("helmValues.enableAES and installOSS fields conflict with each other")
+	enableOSS := spec.InstallOSS
+	if enableAESUntyped, ok := specHelmValues["enableAES"]; ok {
+		if enableAES, ok := enableAESUntyped.(bool); ok {
+			if (!enableAES && !enableOSS) || (enableAES && enableOSS) {
+				log.Info("helmValues.enableAES and installOSS fields conflict with each other",
+					"enableAES", enableAES, "installOSS", enableOSS)
+				status.SetCondition(ambassador.AmbInsCondition{
+					Type:    ambassador.ConditionReleaseFailed,
+					Status:  ambassador.StatusTrue,
+					Reason:  ambassador.ReasonParametersError,
+					Message: fmt.Sprintf("helmValues.enableAES and installOSS fields conflict with each other"),
+				})
+				_ = r.updateResourceStatus(ambIns, status)
+				return reconcile.Result{}, fmt.Errorf("helmValues.enableAES and installOSS fields conflict with each other")
+			}
+		}
 	}
 
-	if len(ambObj.Spec.BaseImage) > 0 {
-		repo, tag, err := parseRepoTag(ambObj.Spec.BaseImage)
+	if len(spec.BaseImage) > 0 {
+		repo, tag, err := parseRepoTag(spec.BaseImage)
 		if err != nil {
 			status.SetCondition(ambassador.AmbInsCondition{
 				Type:    ambassador.ConditionReleaseFailed,
 				Status:  ambassador.StatusTrue,
 				Reason:  ambassador.ReasonParametersError,
-				Message: fmt.Sprintf("could not parse base image from %s", ambObj.Spec.BaseImage),
+				Message: fmt.Sprintf("could not parse base image from %s", spec.BaseImage),
 			})
 			_ = r.updateResourceStatus(ambIns, status)
 			return reconcile.Result{}, err
 		}
 		reqLogger.Info("Using custom base image", "repo", repo, "tag", tag)
-		helmValues["image.repository"] = repo
-		helmValues["image.tag"] = tag
+		helmValuesStrings["image.repository"] = repo
+		helmValuesStrings["image.tag"] = tag
 	}
 
-	if ambObj.Spec.InstallOSS {
+	if enableOSS {
 		// This is a huge HACK! The line below should have been -
 		// helmValues["enableAES"] = false
 		// but NewHelmManager and its guts only accept map[string]string which is wrong, because not all Helm values
 		// are map[string]string.
 		// However, we found out that all objects in ambObj["spec"] are passed to Helm by NewManager, so that is what
 		// this code is doing.
-		ambIns.Object["spec"].(map[string]interface{})["enableAES"] = false
+		reqLogger.Info("AES: disabled")
+		err := unstructured.SetNestedField(ambIns.Object, false, "spec", "enableAES")
+		if err != nil {
+			reqLogger.Error(err, "could not set spec.enableAES")
+		}
 
 		// We do not want to update image.repository and image.tag if they have already been populated by user supplied
 		// configuration.
-		if len(helmValues["image.repository"]) == 0 && len(helmValues["image.tag"]) == 0 {
-			helmValues["image.repository"] = "quay.io/datawire/ambassador"
+		if len(helmValuesStrings["image.repository"]) == 0 && len(helmValuesStrings["image.tag"]) == 0 {
+			reqLogger.Info("Setting image to OSS", "image", defOSSImageRepository)
+			helmValuesStrings["image.repository"] = defOSSImageRepository
 		}
+	} else {
+		reqLogger.Info("AES: enabled")
 	}
 
-	if len(ambObj.Spec.LogLevel) > 0 {
-		reqLogger.Info("Using custom log level", "level", ambObj.Spec.LogLevel)
-		helmValues["pro.logLevel"] = ambObj.Spec.LogLevel
+	if len(spec.LogLevel) > 0 {
+		reqLogger.Info("Using custom log level", "level", spec.LogLevel)
+		helmValuesStrings["pro.logLevel"] = spec.LogLevel
 	}
 
 	// create a new parsed checker for versions
-	chartVersion, err := helm.NewChartVersionRule(ambObj.Spec.Version)
+	chartVersion, err := helm.NewChartVersionRule(spec.Version)
 	if err != nil {
-		message := fmt.Sprintf("could not parse version from %q", ambObj.Spec.Version)
+		message := fmt.Sprintf("could not parse version from %q", spec.Version)
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionReleaseFailed,
 			Status:  ambassador.StatusTrue,
@@ -270,12 +281,12 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	options := HelmManagerOptions{
 		Manager: r.Manager,
 		HelmDownloaderOptions: helm.HelmDownloaderOptions{
-			URL:     ambObj.Spec.HelmRepo,
+			URL:     spec.HelmRepo,
 			Version: chartVersion,
 		},
 	}
 	// create a new manager for the remote Helm repo URL
-	chartsMgr, err := NewHelmManager(options, helmValues)
+	chartsMgr, err := NewHelmManager(options, helmValuesStrings)
 	if err != nil {
 		return reconcile.Result{}, err
 	}
@@ -288,9 +299,9 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	}
 
 	// get an update window from the arguments in the CRD
-	window, err := NewUpdateWindow(ambObj.Spec.UpdateWindow)
+	window, err := NewUpdateWindow(spec.UpdateWindow)
 	if err != nil {
-		message := fmt.Sprintf("could not parse an update window from %s", ambObj.Spec.UpdateWindow)
+		message := fmt.Sprintf("could not parse an update window from %s", spec.UpdateWindow)
 		reqLogger.Info(message)
 
 		status.SetCondition(ambassador.AmbInsCondition{
