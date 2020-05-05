@@ -140,6 +140,7 @@ type AmbassadorRelease struct {
 	Version    string `json:"version,omitempty"`
 	AppVersion string `json:"appVersion,omitempty"`
 	Manifest   string `json:"manifest,omitempty"`
+	Flavor     string `json:"flavor,omitempty"`
 }
 
 const (

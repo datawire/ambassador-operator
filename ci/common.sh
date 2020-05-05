@@ -952,6 +952,22 @@ EOF
 	passed "... AmbassadorInstallation created successfully..."
 }
 
+# apply_amb_inst_aes...>
+# apply an `AmbassadorInstallation` with a `installOSS: false`
+apply_amb_inst_aes() {
+	info "Creating an AmbassadorInstallation with 'installOSS: false'..."
+	cat <<EOF | kubectl apply $@ -f -
+apiVersion: getambassador.io/v2
+kind: AmbassadorInstallation
+metadata:
+  name: ${AMB_INSTALLATION_NAME}
+spec:
+  installOSS: false
+  logLevel: info
+EOF
+	passed "... AmbassadorInstallation created successfully..."
+}
+
 # kube_check_resource_empty "resource name" "kubectl args"
 # check if a resource is present in Kubernetes
 # returns 1 if exists, 0 if does not exist

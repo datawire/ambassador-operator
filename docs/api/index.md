@@ -130,3 +130,5 @@ the last time there was a transition to this condition..</p>
 * `appVersion` - string  
 
 * `manifest` - string  
+
+* `flavor` - string  

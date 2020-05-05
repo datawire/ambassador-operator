@@ -144,6 +144,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 			Version:    installedRelease.Chart.Metadata.Version,
 			AppVersion: installedRelease.Chart.Metadata.AppVersion,
 			Manifest:   installedRelease.Manifest,
+			Flavor:     r.flavor,
 		}
 
 		err = r.updateResourceStatus(ambObj, status)
@@ -204,6 +205,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 			Version:    updatedRelease.Chart.Metadata.Version,
 			AppVersion: updatedRelease.Chart.Metadata.AppVersion,
 			Manifest:   updatedRelease.Manifest,
+			Flavor:     r.flavor,
 		}
 		err = r.updateResourceStatus(ambObj, status)
 		return reconcile.Result{RequeueAfter: r.checkInterval}, err
@@ -244,6 +246,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 		Version:    expectedRelease.Chart.Metadata.Version,
 		AppVersion: expectedRelease.Chart.Metadata.AppVersion,
 		Manifest:   expectedRelease.Manifest,
+		Flavor:     r.flavor,
 	}
 	_ = r.updateResourceStatus(ambObj, status)
 	return reconcile.Result{RequeueAfter: r.checkInterval}, nil

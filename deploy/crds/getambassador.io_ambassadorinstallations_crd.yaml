@@ -157,6 +157,8 @@ spec:
               properties:
                 appVersion:
                   type: string
+                flavor:
+                  type: string
                 manifest:
                   type: string
                 name:
