@@ -82,7 +82,22 @@ info "Updating AmbassadorInstallation with 'installOSS: false'..."
 apply_amb_inst_aes -n "$TEST_NAMESPACE"
 info "AmbassadorInstallation updated successfully..."
 
-wait_deploy "$AMB_OPER_DEPLOY" -n "$TEST_NAMESPACE"
+info "Waiting for Operator to trigger an update..."
+sleep 5
+
+i=0
+timeout=$DEF_WAIT_TIMEOUT
+until [ "$(kubectl get deployments "$AMB_DEPLOY" -n "$TEST_NAMESPACE" -o=jsonpath='{.status.updatedReplicas}')" -ne 3 ] || [ $i -ge $timeout ]; do
+    info "updatedReplicas $(kubectl get deployments "$AMB_DEPLOY" -n "$TEST_NAMESPACE" -o=jsonpath='{.status.updatedReplicas}'), required 3"
+    i=$((i + 1))
+    sleep 1
+done
+
+if [ $i -gt $timeout ]; then
+    failed "Timeout waiting for AES to get installed after $timeout seconds!"
+fi
+
+passed "... good! The operator has updated Ambassador!"
 
 info "Checking the repository of Ambassador that has been deployed is $AES_IMAGE_REPOSITORY..."
 if ! amb_check_image_repository "$AES_IMAGE_REPOSITORY" -n "$TEST_NAMESPACE"; then
@@ -90,7 +105,13 @@ if ! amb_check_image_repository "$AES_IMAGE_REPOSITORY" -n "$TEST_NAMESPACE"; th
 	oper_logs_dump -n "$TEST_NAMESPACE"
 	failed "wrong version installed"
 fi
-passed "... good! Ambassador that has been deployed with $AES_IMAGE_REPOSITORY"
+passed "... good! Ambassador has been deployed with $AES_IMAGE_REPOSITORY"
+
+amb_inst_check_success -n "$TEST_NAMESPACE" || {
+    warn "Success not found in AmbassadorInstallation:"
+    amb_inst_describe -n "$TEST_NAMESPACE"
+    failed "Success not found in AmbassadorInstallation description"
+}
 
 [ -n "$VERBOSE" ] && {
 	info "Describe: AmbassadorInstallation:" && amb_inst_describe -n "$TEST_NAMESPACE"
