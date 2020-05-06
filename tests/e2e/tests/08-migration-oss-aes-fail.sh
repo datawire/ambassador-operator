@@ -97,6 +97,7 @@ sleep 5
 i=0
 timeout=$DEF_WAIT_TIMEOUT
 until [ "$(kubectl get deployments "$AMB_DEPLOY" -n "$TEST_NAMESPACE" -o=jsonpath='{.status.updatedReplicas}')" -ne 3 ] || [ $i -ge $timeout ]; do
+    info "Checking if AES is installed: $i"
     info "updatedReplicas $(kubectl get deployments "$AMB_DEPLOY" -n "$TEST_NAMESPACE" -o=jsonpath='{.status.updatedReplicas}'), required 3"
     i=$((i + 1))
     sleep 1
