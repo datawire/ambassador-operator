@@ -103,8 +103,8 @@ until [ "$(kubectl get deployments "$AMB_DEPLOY" -n "$TEST_NAMESPACE" -o=jsonpat
     sleep 1
 done
 
-if [ $i -le $timeout ]; then
-    failed "AES should never get ready, but if got ready after $timeout seconds!"
+if [ $i -lt $timeout ]; then
+    failed "AES should never get ready, but it got ready after $timeout seconds!"
 fi
 passed "AES never got ready because AuthService was installed before migration"
 
