@@ -75,7 +75,11 @@ force system updates to happen late at night if that’s what the sysadmins want
   * `5 1 * * *`: every first day of the month, at 5am
 - The Operator cannot guarantee minute time granularity, so specifying a minute in the crontab
   expression can lead to some updates happening sooner/later than expected.
-  
+
+`installOSS` in an optional field which, if set to `true` install Ambassador API Gateway instead of
+Ambassador Edge Stack.
+Default: `false`.
+
 ## Helm repo and values
 
 - `helmRepo`: an optional URL used for specifying an alternative
