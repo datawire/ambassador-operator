@@ -5,15 +5,13 @@ metadata:
 spec:
   version: "1.*"
   helmValues:
-    image:
-      pullPolicy: Always
-    namespace:
-      name: ambassador
+    image: "pullPolicy: Always"
+    namespace: "name: ambassador"
     service:
-      ports:
+      "ports:
         - name: http
           port: 80
           targetPort: 8080
-      type: NodePort
+      type: NodePort"
 
 
