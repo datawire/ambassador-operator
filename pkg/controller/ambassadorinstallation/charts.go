@@ -1,6 +1,9 @@
 package ambassadorinstallation
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/operator-framework/operator-sdk/pkg/helm/release"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -68,20 +71,27 @@ func (lc *HelmManager) GetManagerFor(o *unstructured.Unstructured) (release.Mana
 	var oc unstructured.Unstructured
 	o.DeepCopyInto(&oc)
 
+	valuesStrings := lc.Values
+
 	// hack for allowing any type in the helmValues:
 	// translate all the `.spec.helmValues.*` to `.spec.*`, so factory.NewManager
 	// will get these values (with any type) for setting.
 	if helmValues := GetHelmValuesFrom(&oc); helmValues != nil {
 		for k, v := range helmValues {
-			err := unstructured.SetNestedField(oc.Object, v, "spec", k)
-			if err != nil {
-				log.Info("could not set spec value", "key", k, "value", v)
+			if strings.Contains(k, ".") {
+				// if we detect a dot then we pass it as a value for backwards-compatibility
+				// for example, in `service.ports[0].port: 80`
+				valuesStrings[k] = fmt.Sprintf("%v", v)
+			} else {
+				if err := unstructured.SetNestedField(oc.Object, v, "spec", k); err != nil {
+					log.Info("could not set spec value", "key", k, "value", v)
+				}
 			}
 		}
-		unstructured.RemoveNestedField(oc.Object, "spec", "helmValues")
+		unstructured.RemoveNestedField(oc.Object, "spec", defHelmValuesFieldName)
 	}
 
-	chartMgr, err := factory.NewManager(&oc, lc.Values)
+	chartMgr, err := factory.NewManager(&oc, valuesStrings)
 	if err != nil {
 		return nil, err
 	}
