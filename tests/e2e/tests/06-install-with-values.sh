@@ -17,6 +17,9 @@ source "$this_dir/../common.sh"
 # the versions of Ambassador to install
 AMB_VERSION="1.4.1"
 
+# `image.tag` that will be forced in a helmvalue
+AMB_IMAGE_TAG="1.4.0"
+
 ########################################################################################################################
 
 [ -z "$DEV_REGISTRY" ] && abort "no DEV_REGISTRY defined"
@@ -45,29 +48,34 @@ spec:
       name: ${TEST_NAMESPACE}
     image:
       pullPolicy: Always
-    service:
-      type: NodePort
-      ports:
-      - name: http
-        port: 80
-        targetPort: 8080
+    image.tag: ${AMB_IMAGE_TAG}
+    service.ports[0].name: http
+    service.ports[0].port: 80
+    service.ports[0].targetPort: 8080
 EOF
 
 info "Waiting for the Operator to install Ambassador"
 if ! wait_amb_addr -n "$TEST_NAMESPACE"; then
-    warn "Ambassador not installed. Dumping Operator's logs:"
+    warn "It seems Ambassador was not installed:"
+    kubectl get deplokments -n $TEST_NAMESPACE
+    warn "Dumping Operator's logs:"
     oper_logs_dump -n "$TEST_NAMESPACE"
-    failed "could not get an Ambassador IP"
+    failed "timeout while waiting for an Ambassador IP"
 fi
 passed "... good! Ambassador has been installed by the Operator!"
 
 info "Checking Ambassador values:"
-helm get values -n "$TEST_NAMESPACE" ${AMB_INSTALLATION_NAME}
-helm get values -n "$TEST_NAMESPACE" ${AMB_INSTALLATION_NAME} | \
-    grep -q "name: $TEST_NAMESPACE" || abort "no namespace found in values"
-helm get values -n "$TEST_NAMESPACE" ${AMB_INSTALLATION_NAME} | \
-    grep -q "name: http" || abort "no http port found in values"
-helm get values -n "$TEST_NAMESPACE" ${AMB_INSTALLATION_NAME} | \
-    grep -q "type: NodePort" || abort "no NodePort found in values"
+values="$(helm get values -n "$TEST_NAMESPACE" ${AMB_INSTALLATION_NAME})"
+echo "$values"
+
+echo "$values" | grep -q "name: $TEST_NAMESPACE" || abort "no namespace found in values"
+echo "$values" | grep -q "name: http" || abort "no http port found in values"
+
+info "Checking the version of Ambassador that has been deployed is $AMB_IMAGE_TAG..."
+if ! amb_check_image_tag "$AMB_IMAGE_TAG" -n "$TEST_NAMESPACE"; then
+    oper_logs_dump -n "$TEST_NAMESPACE"
+    failed "wrong version installed"
+fi
+passed "... good! The version is $AMB_VERSION_FIRST"
 
 exit 0
