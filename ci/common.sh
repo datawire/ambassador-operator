@@ -264,7 +264,8 @@ get_amb_addr() {
 	if [ -n "$AMB_EXT_ADDR" ]; then
 		echo "$AMB_EXT_ADDR"
 	else
-		kubectl get $@ service ambassador -o 'go-template={{range .status.loadBalancer.ingress}}{{print .ip "\n"}}{{end}}' 2>/dev/null
+		kubectl get $@ service ambassador \
+		    -o 'go-template={{range .status.loadBalancer.ingress}}{{print .ip "\n"}}{{end}}' 2>/dev/null
 	fi
 }
 
@@ -279,10 +280,10 @@ wait_amb_addr() {
 		sleep 1
 	done
 
-	if [ $i -gt $timeout ]; then
+	if [ $i -ge $timeout ]; then
 		warn "Timeout waiting for Ambassador's IP. Current services:"
-		kubectl get services
-		abort "Ambassador did get not an IP after $timeout seconds"
+		kubectl get services $@
+		abort "Ambassador did not get an IP after $timeout seconds"
 	fi
 }
 
@@ -297,9 +298,9 @@ wait_not_amb_addr() {
 		sleep 1
 	done
 
-	if [ $i -gt $timeout ]; then
+	if [ $i -ge $timeout ]; then
 		warn "Timeout waiting for Ambassador not not have an IP. Current services:"
-		kubectl get services
+		kubectl get services $@
 		abort "Ambassador had an IP after $timeout seconds"
 	fi
 }

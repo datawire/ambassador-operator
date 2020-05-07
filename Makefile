@@ -266,7 +266,7 @@ test: ## Run the Go tests
 
 $(AMB_COVERAGE_FILE): test
 
-e2e: ## Run the e2e tests. options: VERBOSE=1, TEST=<some-test.sh>
+e2e: ## Run the e2e tests -- VERBOSE=1, TEST=<some-test.sh>, CLUSTER_KEEP=1
 	@echo ">>> Running e2e tests"
 	$(Q)AMB_OPER_IMAGE=$(AMB_OPER_IMAGE) ./tests/e2e/runner.sh \
 		--image-name=$(AMB_OPER_BASE_IMAGE) --image-tag=$(AMB_OPER_TAG) check $(TEST)
