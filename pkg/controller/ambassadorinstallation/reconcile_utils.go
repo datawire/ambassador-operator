@@ -86,7 +86,7 @@ func unsToAmbIns(o *unstructured.Unstructured) (*ambassador.AmbassadorInstallati
 	return ambInstallation, nil
 }
 
-// lookupAmbInst looks for a AmbassadorInstallation instance with the namespace/name/gvk
+// lookupResourceList returns a list of resources that match the given gvk in the given namespace
 func (r *ReconcileAmbassadorInstallation) lookupResourceList(gvk *schema.GroupVersionKind, namespace string) (*unstructured.UnstructuredList, error) {
 	o := &unstructured.Unstructured{}
 	o.SetGroupVersionKind(*gvk)

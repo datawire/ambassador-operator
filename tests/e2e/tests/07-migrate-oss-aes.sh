@@ -72,8 +72,8 @@ fi
 passed "... good! AuthServices are not present in the namespace $TEST_NAMESPACE"
 
 amb_inst_check_success -n "$TEST_NAMESPACE" || {
-	warn "Unexpected content in AmbassadorInstallation description:"
-	amb_inst_describe -n "$TEST_NAMESPACE"
+	  warn "Unexpected content in AmbassadorInstallation description:"
+	  amb_inst_describe -n "$TEST_NAMESPACE"
     warn "Logs: Ambassador operator:"
     oper_logs_dump -n "$TEST_NAMESPACE"	failed "Success not found in AmbassadorInstallation description"
 }
