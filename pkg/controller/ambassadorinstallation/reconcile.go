@@ -266,44 +266,45 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 
 		r.flavor = flavorOSS
 	} else {
-		log.Info("AuthService or RateLimitService must not exist in the cluster while upgrading from OSS to AES...")
+		if status.DeployedRelease != nil {
+			// if AES is already installed, then we don't need to look for AuthService or RateLimitService
+			log.Info("AuthService or RateLimitService must not exist in the cluster while upgrading from OSS to AES...")
 
-		// if AES is already installed, then we don't need to look for AuthService or RateLimitService
-		if status.DeployedRelease.Flavor != flavorAES {
-			log.Info("Checking for AuthService...")
-			authServiceList, err := r.lookupResourceList(&schema.GroupVersionKind{
-				Group:   "getambassador.io",
-				Version: "v2",
-				Kind:    "AuthService",
-			}, request.Namespace)
-			if err != nil {
-				log.Error(err, "Could not look up AuthService in the cluster")
-				return reconcile.Result{}, err
-			}
-			if len(authServiceList.Items) > 0 {
-				err = fmt.Errorf("AuthService(s) exist in the cluster, please remove to upgrade to AES")
-				log.Error(err, "")
-				return reconcile.Result{}, err
-			}
+			if status.DeployedRelease.Flavor != flavorAES {
+				log.Info("Checking for AuthService...")
+				authServiceList, err := r.lookupResourceList(&schema.GroupVersionKind{
+					Group:   "getambassador.io",
+					Version: "v2",
+					Kind:    "AuthService",
+				}, request.Namespace)
+				if err != nil {
+					log.Error(err, "Could not look up AuthService in the cluster")
+					return reconcile.Result{}, err
+				}
+				if len(authServiceList.Items) > 0 {
+					err = fmt.Errorf("AuthService(s) exist in the cluster, please remove to upgrade to AES")
+					log.Error(err, "")
+					return reconcile.Result{}, err
+				}
 
-			log.Info("Checking for RateLimitService...")
-			rateLimitServiceList, err := r.lookupResourceList(&schema.GroupVersionKind{
-				Group:   "getambassador.io",
-				Version: "v2",
-				Kind:    "RateLimitService",
-			}, request.Namespace)
-			if err != nil {
-				log.Error(err, "Could not look up RateLimitService in the cluster")
-				return reconcile.Result{}, err
+				log.Info("Checking for RateLimitService...")
+				rateLimitServiceList, err := r.lookupResourceList(&schema.GroupVersionKind{
+					Group:   "getambassador.io",
+					Version: "v2",
+					Kind:    "RateLimitService",
+				}, request.Namespace)
+				if err != nil {
+					log.Error(err, "Could not look up RateLimitService in the cluster")
+					return reconcile.Result{}, err
+				}
+				if len(rateLimitServiceList.Items) > 0 {
+					err = fmt.Errorf("RateLimitService(s) exist in the cluster, please remove to upgrade to AES")
+					log.Error(err, "")
+					return reconcile.Result{}, err
+				}
 			}
-			if len(rateLimitServiceList.Items) > 0 {
-				err = fmt.Errorf("RateLimitService(s) exist in the cluster, please remove to upgrade to AES")
-				log.Error(err, "")
-				return reconcile.Result{}, err
-			}
-
-			r.flavor = flavorAES
 		}
+		r.flavor = flavorAES
 		reqLogger.Info("AES: enabled")
 	}
 
