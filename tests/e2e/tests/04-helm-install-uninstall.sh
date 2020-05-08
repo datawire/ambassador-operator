@@ -34,11 +34,10 @@ oper_install "helm" "$TEST_NAMESPACE" || failed "could not deploy operator"
 oper_wait_install -n "$TEST_NAMESPACE" || failed "the Ambassador operator is not alive"
 
 info "Checking the static Helm values..."
-amb_wait_kubectl_exec -n "$TEST_NAMESPACE" || abort "Could not kubectl exec"
-pod=$(oper_get_random_pod -n "$TEST_NAMESPACE")
-kubectl exec -it -n "$TEST_NAMESPACE" "$pod" -- cat /tmp/helm/values.yaml | grep -E "deploymentTool.*$EXPECTED_MANAGED_BY" || {
-    abort "no 'deploymentTool' with '$EXPECTED_MANAGED_BY' found in Helm static values file"
+oper_check_file_contains /tmp/helm/values.yaml "deploymentTool.*$EXPECTED_MANAGED_BY" -n "$TEST_NAMESPACE" || {
+	failed "no 'deploymentTool' with '$EXPECTED_MANAGED_BY' found in Helm static values file"
 }
+passed "... good! /tmp/helm/values.yaml contains deploymentTool = $EXPECTED_MANAGED_BY"
 
 info "Checking we can install Ambassador..."
 amb_inst_apply_version "$AMB_VERSION" -n "$TEST_NAMESPACE" || failed "could not instruct the operator to install $AMB_VERSION"
@@ -59,8 +58,8 @@ passed "... good! Ambassador has been installed by the Operator!"
 info "Checking that Ambassador has the managed-by == $EXPECTED_MANAGED_BY"
 sleep 10
 amb_get_pods_yaml -n "$TEST_NAMESPACE" | grep -E "managed-by.*$EXPECTED_MANAGED_BY" || {
-    [ -n "$VERBOSE" ] && amb_get_pods_yaml -n "$TEST_NAMESPACE"
-    abort "no 'managed-by' with '$EXPECTED_MANAGED_BY' found in the Ambassador pods"
+	[ -n "$VERBOSE" ] && amb_get_pods_yaml -n "$TEST_NAMESPACE"
+	abort "no 'managed-by' with '$EXPECTED_MANAGED_BY' found in the Ambassador pods"
 }
 passed "... good! Ambassador has the right managed-by!"
 

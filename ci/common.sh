@@ -65,7 +65,7 @@ timestamp() {
 timeout_from() {
 	local start=$1
 	local now=$(timestamp)
-	test $now -gt $(($start + $DEF_WAIT_TIMEOUT))
+	test $now -gt $((start + DEF_WAIT_TIMEOUT))
 }
 
 # command_exists <cmd>
@@ -108,11 +108,9 @@ check_http_code() {
 }
 
 wait_until() {
-	local expr="$1"
-	shift
 	local start_time=$(timestamp)
-	info "Waiting for '$expr'"
-	until timeout_from $start_time || eval "$expr"; do
+	info "Waiting for $@"
+	until timeout_from $start_time || eval "$@"; do
 		info "... still waiting"
 		sleep 1
 	done
@@ -123,7 +121,7 @@ wait_until() {
 wait_http_code() {
 	local url="$1"
 	local code="$2"
-	wait_until "check_http_code $url $code"
+	wait_until check_http_code $url $code
 }
 
 # kill_background
@@ -139,7 +137,7 @@ kill_background() {
 wait_url() {
 	local url="$1"
 	info "Waiting for $url (max $DEF_WAIT_TIMEOUT seconds)"
-	wait_until "check_url $url"
+	wait_until check_url $url
 }
 
 # download_exe <exe> <url>
@@ -176,7 +174,7 @@ _check_registry() {
 
 check_registry() {
 	# registries somethimes can fail, so retry
-	wait_until "_check_registry"
+	wait_until _check_registry
 }
 
 check_kubeconfig() {
@@ -265,7 +263,7 @@ get_amb_addr() {
 		echo "$AMB_EXT_ADDR"
 	else
 		kubectl get $@ service ambassador \
-		    -o 'go-template={{range .status.loadBalancer.ingress}}{{print .ip "\n"}}{{end}}' 2>/dev/null
+			-o 'go-template={{range .status.loadBalancer.ingress}}{{print .ip "\n"}}{{end}}' 2>/dev/null
 	fi
 }
 
@@ -562,7 +560,7 @@ add_go_mod_replace() {
 	local to_path="${2:?second path in replace statement is required}"
 	local version="${3:-}"
 
-	if [[ ! -d "$to_path" && -z "$version" ]]; then
+	if [[ ! -d $to_path && -z $version ]]; then
 		echo "second replace path $to_path requires a version be set because it is not a directory"
 		exit 1
 	fi
@@ -577,7 +575,7 @@ add_go_mod_replace() {
 	fi
 	# Do not use "go mod edit" so formatting stays the same.
 	local replace="replace ${from_path} => ${to_path}"
-	if [[ -n "$version" ]]; then
+	if [[ -n $version ]]; then
 		replace="$replace $version"
 	fi
 	echo "$replace" >>go.mod
@@ -604,7 +602,7 @@ latest_git_version() {
 #
 print_git_tags() {
 	git_tags=$(git tag -l | sed 's|^|    |')
-	if [[ -n "$git_tags" ]]; then
+	if [[ -n $git_tags ]]; then
 		info "Found git tags:"
 		for tag in $git_tags; do
 			info " - ${tag}"
@@ -623,12 +621,12 @@ print_git_tags() {
 is_latest_tag() {
 	local candidate="$1"
 	shift || abort "${FUNCNAME} usage error"
-	if ! [[ "$candidate" =~ $semver_regex ]]; then
+	if ! [[ $candidate =~ $semver_regex ]]; then
 		return 1
 	fi
 
 	local latest="$(latest_git_version)"
-	[[ -z "$latest" || "$candidate" == "$latest" ]]
+	[[ -z $latest || $candidate == "$latest" ]]
 }
 
 # get_image_tags <image_name>
@@ -641,12 +639,12 @@ is_latest_tag() {
 #
 get_image_tags() {
 	local image_name=$1
-	[[ -n "$image_name" ]] && image_name="${image_name}:"
+	[[ -n $image_name ]] && image_name="${image_name}:"
 
 	# Tag `:$TRAVIS_BRANCH` if it is set.
 	# Note that if the build is for a tag, $TRAVIS_BRANCH is set
 	# to the tag, so this works in both cases
-	if [[ -n "$TRAVIS_BRANCH" ]]; then
+	if [[ -n $TRAVIS_BRANCH ]]; then
 		echo "${image_name}${TRAVIS_BRANCH}"
 	fi
 
@@ -674,7 +672,7 @@ docker_login() {
 	shift || abort "${FUNCNAME} usage error"
 
 	local server=$(docker_server_for_image $image_name)
-	if [[ -n "$DOCKER_USERNAME" && -n "$DOCKER_PASSWORD" ]]; then
+	if [[ -n $DOCKER_USERNAME && -n $DOCKER_PASSWORD ]]; then
 		echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin "$server"
 	else
 		info "(skipping login to $server: no DOCKER_USERNAME/DOCKER_PASSWORD provided)"
@@ -688,10 +686,10 @@ docker_login() {
 # returns a failure code if any check doesn't pass.
 #
 check_can_push() {
-	if [[ "$TRAVIS" != "true" ]]; then
+	if [[ $TRAVIS != "true" ]]; then
 		info "Detected execution in a non-TravisCI environment. Skipping image push."
 		return 1
-	elif [[ "$TRAVIS_EVENT_TYPE" == "pull_request" ]]; then
+	elif [[ $TRAVIS_EVENT_TYPE == "pull_request" ]]; then
 		info "Detected pull request commit. Skipping image push"
 		return 1
 	elif [[ ! -f "$HOME/.docker/config.json" ]]; then
@@ -710,7 +708,7 @@ docker_server_for_image() {
 	local image_name="$1"
 	shift || abort "${FUNCNAME} usage error"
 	IFS='/' read -r -a segments <<<"$image_name"
-	if [[ "${#segments[@]}" -ge "2" ]]; then
+	if [[ ${#segments[@]} -ge "2" ]]; then
 		echo "${segments[0]}"
 	else
 		echo ""
@@ -973,17 +971,17 @@ EOF
 # check if a resource is present in Kubernetes
 # returns 1 if exists, 0 if does not exist
 kube_check_resource_empty() {
-    local kube_resource="$1"
-    shift
+	local kube_resource="$1"
+	shift
 
-    info "Checking if Kubernetes resource $kube_resource exists"
-    if [[ $(kubectl get "$kube_resource" $@ 2> /dev/null) ]]; then
-        info "... Kubernetes resource $kube_resource exists"
-        return 1
-    else
-        info "... Kubernetes resource $kube_resource does not exist"
-        return 0
-    fi
+	info "Checking if Kubernetes resource $kube_resource exists"
+	if [[ $(kubectl get "$kube_resource" $@ 2>/dev/null) ]]; then
+		info "... Kubernetes resource $kube_resource exists"
+		return 1
+	else
+		info "... Kubernetes resource $kube_resource does not exist"
+		return 0
+	fi
 }
 
 # amb_inst_delete <KUBECTL_ARGS...>
@@ -1110,7 +1108,7 @@ oper_install_yaml() {
 
 oper_install_helm() {
 	local namespace="$1"
-	helm install ambassador-operator --namespace "$namespace" \
+	helm install ambassador-operator --wait --namespace "$namespace" \
 		--set namespace="$namespace",image.name=$(get_full_image_name) \
 		deploy/helm/ambassador-operator/
 }
@@ -1130,17 +1128,25 @@ oper_wait_install() {
 }
 
 oper_get_random_pod() {
-    kubectl get pod $@ -l "name=ambassador-operator" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
+	kubectl get pod $@ -l "name=ambassador-operator" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
 }
 
-amb_wait_kubectl_exec() {
-	local i=0
-	until [ $i -ge $DEF_WAIT_TIMEOUT ]; do
-        pod=$(oper_get_random_pod $@)
-        [ -n "$pod" ] && kubectl exec -it $@ "$pod" -- /bin/true && return 0
-        warn "no kubectl exec yet..."
-		i=$((i + 1))
-		sleep 1
-	done
+_check_file_contains() {
+	local file="$1"
+	shift
+	local pattern="$1"
+	shift
+
+	pod=$(oper_get_random_pod $@)
+	if [ -n "$pod" ]; then
+		res="$(kubectl exec -it $@ $pod -- cat $file 2>/dev/null)"
+		if [ $? -eq 0 ] && [ -n "$res" ]; then
+			echo "$res" | grep -q -E "$pattern" && return 0
+		fi
+	fi
 	return 1
+}
+
+oper_check_file_contains() {
+	wait_until _check_file_contains $@
 }
