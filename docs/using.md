@@ -83,25 +83,33 @@ Default: `false`.
 ## Helm repo and values
 
 - `helmRepo`: an optional URL used for specifying an alternative
-  Helm Charts repo. By default, it uses the repo located
-  at `https://www.getambassador.io`.
+  Helm Charts repo. By default, it uses the Helm repository located
+  at `https://www.getambassador.io`. It can also be used for pointing to
+  a compressed file that contains the Ambassador Helm Chart.
+
+  Example:
+  ```yaml
+  helmRepo: https://github.com/datawire/ambassador-chart/archive/rel/v1.4.1.zip
+  ```
+
 - `helmValues`: an optional map of configurable parameters of
   the Ambassador chart with some overriden values. Take a look at
   the [current list of values](https://github.com/helm/charts/tree/master/stable/ambassador#configuration)
   and their default values.
 
-  Examples:    
-    ```yaml
-    helmValues:
-      nodeSelector:
-        kubernetes.io/role: master
-    ```
-
-    ```yaml
-    helmValues:
-      servers:
-        - port: "80"
-          host: "example"
-    ```
+  Example:
+  ```yaml
+  helmValues:
+     image:
+      pullPolicy: Always
+    namespace:
+      name: ambassador
+    service:
+      ports:
+        - name: http
+          port: 80
+          targetPort: 8080
+      type: NodePort
+  ```
   * Note that, `spec.helmValues.enableAES` should not conflict with the `spec.installOSS` field or else your
     installation will error out.
