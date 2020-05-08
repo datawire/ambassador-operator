@@ -1,0 +1,9 @@
+---
+apiVersion: getambassador.io/v2
+kind: AmbassadorInstallation
+metadata:
+  name: ambassador
+spec:
+  installOSS: true
+  helmValues:
+    deploymentTool: amb-oper-kind
