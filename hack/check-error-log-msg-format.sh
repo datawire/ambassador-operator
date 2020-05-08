@@ -28,6 +28,6 @@ if [ -n "${err_punct_output}" ]; then
 	echo -e "Error messages should not have ending punctuation:\n${err_punct_output}"
 fi
 
-if [[ -n "$log_case_output" || -n "$err_case_output" || -n "$err_punct_output" ]]; then
+if [[ -n $log_case_output || -n $err_case_output || -n $err_punct_output ]]; then
 	exit 255
 fi

@@ -31,8 +31,8 @@ AMB_OPER_IMAGE      ?= $(AMB_OPER_BASE_IMAGE):$(AMB_OPER_TAG)
 AMB_OPER_ARCHES     :="amd64"
 
 AMB_OPER_PKGS        = $(shell go list ./...)
-AMB_OPER_SRCS        = $(shell find . -name '*.go')
-AMB_OPER_SHS         = $(shell find . -name '*.sh')
+AMB_OPER_SRCS        = $(shell find . -name '*.go' ! -path './ci/cluster-providers/*')
+AMB_OPER_SHS         = $(shell find . -name '*.sh' ! -path './ci/cluster-providers/*')
 
 # manifests that must be loaded (order matters)
 AMB_NS               = "ambassador"
@@ -74,6 +74,9 @@ AMB_OPER_CHART_VALS  := $(TOP_DIR)/deploy/helm/ambassador-operator/values.yaml
 
 # Go flags
 GO_FLAGS             =
+
+# shfmt flags
+SHFMT_ARGS           = -s -ln bash
 
 CLUSTER_PROVIDER    ?= k3d
 export CLUSTER_PROVIDER
@@ -121,7 +124,7 @@ format: ## Format the Go source code
 	$(Q)go fmt $(AMB_OPER_PKGS)
 
 format-sh:  ## Format the Shell source code
-	$(Q)command -v shfmt >/dev/null && shfmt -w $(AMB_OPER_SHS)
+	$(Q)command -v shfmt >/dev/null && shfmt $(SHFMT_ARGS) -w $(AMB_OPER_SHS)
 
 tidy: ## Update dependencies
 	$(Q)go mod tidy -v
@@ -301,7 +304,7 @@ live: build load-crds ## Try to run the operator in the current cluster pointed 
 
 ci/lint: lint
 
-ci/check-format-gen: format generate
+ci/check-format-gen: format format-sh generate
 	$(Q)$(TOP_DIR)/hack/tests/check-dirty.sh
 
 ci/build: lint build image-build

@@ -65,7 +65,7 @@ function print_image_info() {
 	image_id=$(docker inspect "$image_name" -f "{{.Id}}")
 	image_created=$(docker inspect "$image_name" -f "{{.Created}}")
 
-	if [[ -n "$image_id" ]]; then
+	if [[ -n $image_id ]]; then
 		info "Docker image info:"
 		info "    Name:      $image_name"
 		info "    ID:        $image_id"

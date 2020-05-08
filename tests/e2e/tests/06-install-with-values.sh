@@ -2,8 +2,8 @@
 
 this_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd)"
 [ -d "$this_dir" ] || {
-    echo "FATAL: no current dir (maybe running in zsh?)"
-    exit 1
+	echo "FATAL: no current dir (maybe running in zsh?)"
+	exit 1
 }
 TOP_DIR=$(realpath $this_dir/../../..)
 
@@ -56,11 +56,11 @@ EOF
 
 info "Waiting for the Operator to install Ambassador"
 if ! wait_amb_addr -n "$TEST_NAMESPACE"; then
-    warn "It seems Ambassador was not installed:"
-    kubectl get deplokments -n $TEST_NAMESPACE
-    warn "Dumping Operator's logs:"
-    oper_logs_dump -n "$TEST_NAMESPACE"
-    failed "timeout while waiting for an Ambassador IP"
+	warn "It seems Ambassador was not installed:"
+	kubectl get deplokments -n $TEST_NAMESPACE
+	warn "Dumping Operator's logs:"
+	oper_logs_dump -n "$TEST_NAMESPACE"
+	failed "timeout while waiting for an Ambassador IP"
 fi
 passed "... good! Ambassador has been installed by the Operator!"
 
@@ -73,8 +73,8 @@ echo "$values" | grep -q "name: http" || abort "no http port found in values"
 
 info "Checking the version of Ambassador that has been deployed is $AMB_IMAGE_TAG..."
 if ! amb_check_image_tag "$AMB_IMAGE_TAG" -n "$TEST_NAMESPACE"; then
-    oper_logs_dump -n "$TEST_NAMESPACE"
-    failed "wrong version installed"
+	oper_logs_dump -n "$TEST_NAMESPACE"
+	failed "wrong version installed"
 fi
 passed "... good! The version is $AMB_VERSION_FIRST"
 
