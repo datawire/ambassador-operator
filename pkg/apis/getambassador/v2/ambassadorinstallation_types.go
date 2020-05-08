@@ -102,6 +102,7 @@ type AmbassadorInstallationStatus struct {
 // +kubebuilder:printcolumn:name="REASON",type="string",JSONPath=".status.conditions[?(@.type=='Deployed')].reason",priority=1,description="Reason for deployment completed"
 // +kubebuilder:printcolumn:name="MESSAGE",type="string",JSONPath=".status.conditions[?(@.type=='Deployed')].message",priority=1,description="Message for deployment completed"
 // +kubebuilder:printcolumn:name="DEPLOYED-VERSION",type="string",JSONPath=".status.deployedRelease.appVersion",priority=0,description="Deployed version of Ambassador"
+// +kubebuilder:printcolumn:name="DEPLOYED-FLAVOR",type="string",JSONPath=".status.deployedRelease.flavor",priority=0,description="Deployed flavor of Ambassador (OSS or AES)"
 type AmbassadorInstallation struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
