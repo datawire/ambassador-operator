@@ -32,6 +32,10 @@ spec:
     description: Deployed version of Ambassador
     name: DEPLOYED-VERSION
     type: string
+  - JSONPath: .status.deployedRelease.flavor
+    description: Deployed flavor of Ambassador (OSS or AES)
+    name: DEPLOYED-FLAVOR
+    type: string
   group: getambassador.io
   names:
     kind: AmbassadorInstallation
