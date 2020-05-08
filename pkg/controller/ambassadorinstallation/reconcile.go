@@ -91,7 +91,8 @@ type ReconcileAmbassadorInstallation struct {
 	updateInterval     time.Duration
 	lastSucUpdateCheck time.Time
 
-	flavor string
+	flavor      string
+	isMigrating bool
 }
 
 func NewReconcileAmbassadorInstallation(mgr manager.Manager) *ReconcileAmbassadorInstallation {
@@ -303,6 +304,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 					return reconcile.Result{}, err
 				}
 			}
+			r.isMigrating = true
 		}
 		r.flavor = flavorAES
 		reqLogger.Info("AES: enabled")

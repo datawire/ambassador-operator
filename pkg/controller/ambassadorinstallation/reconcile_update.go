@@ -47,7 +47,8 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 	// 2. this is not the right time (ie, not allowed by the update window)
 	// try to install/upgrade in any other case (ie, the initial installation, the deployment
 	// is in an error state, etc)
-	if currCondition.Type == ambassador.ConditionDeployed {
+	// We ignore this upgrade check when OSS to AES migration is set in AmbassadorInstallation
+	if (currCondition.Type == ambassador.ConditionDeployed) && !r.isMigrating {
 		if !status.LastCheckTime.Time.IsZero() && now.Sub(status.LastCheckTime.Time) < r.updateInterval {
 			log.Info("Last install/update was not so long ago", "updateInterval", r.updateInterval)
 			return reconcile.Result{RequeueAfter: r.checkInterval}, nil
