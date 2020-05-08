@@ -2,6 +2,8 @@ package ambassadorinstallation
 
 import (
 	"context"
+	"fmt"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sort"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -82,4 +84,35 @@ func unsToAmbIns(o *unstructured.Unstructured) (*ambassador.AmbassadorInstallati
 	}
 
 	return ambInstallation, nil
+}
+
+// lookupResourceList returns a list of resources that match the given gvk in the given namespace
+func (r *ReconcileAmbassadorInstallation) lookupResourceList(gvk *schema.GroupVersionKind, namespace string) (*unstructured.UnstructuredList, error) {
+	o := &unstructured.Unstructured{}
+	o.SetGroupVersionKind(*gvk)
+	o.SetNamespace(namespace)
+
+	log := log.WithValues(
+		"namespace", o.GetNamespace(),
+		"apiVersion", o.GetAPIVersion(),
+		"kind", o.GetKind(),
+	)
+
+	oList, err := o.ToList()
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Could not convert resource %v to list", o.GetKind()))
+		return nil, err
+	}
+
+	log.Info(fmt.Sprintf("Looking up resource list for %v in the cluster", o.GetKind()))
+	err = r.Client.List(context.TODO(), oList)
+	if apierrors.IsNotFound(err) {
+		return nil, nil
+	}
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Failed to look up resource %v", o.GetKind()))
+		return nil, err
+	}
+
+	return oList, nil
 }

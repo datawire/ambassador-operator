@@ -51,6 +51,10 @@ sudo apt-get update || abort "could not update repository"
 sudo apt-get -y install python3-pip || abort "could not install pip3"
 passed "... installed pip3 successfully"
 
+info "Installing setuptools"
+sudo apt-get install -y python3-setuptools || about "could not install setuptools"
+passed "... installed setuptools successfully"
+
 info "Installing awscli..."
 sudo pip3 install awscli || abort "could not install awscli"
 passed "... installed awscli successfully"
