@@ -44,15 +44,24 @@ spec:
   version: "*"
   logLevel: info
   helmValues:
+    deploymentTool: amb-oper-kind
+    replicaCount: 1
     namespace:
       name: ${TEST_NAMESPACE}
     image:
       pullPolicy: Always
     image.tag: ${AMB_IMAGE_TAG}
-    service.ports[0].name: http
-    service.ports[0].port: 80
-    service.ports[0].targetPort: 8080
+    service:
+      ports:
+      - name: "http"
+        port: 80
+        targetPort: 8080
 EOF
+
+# TODO: for some unknown reason, we cannot mix packed-form with free-form
+#    service.ports[1].name: https
+#    service.ports[1].port: 443
+#    service.ports[1].targetPort: 8443
 
 info "Waiting for the Operator to install Ambassador"
 if ! wait_amb_addr -n "$TEST_NAMESPACE"; then
@@ -68,8 +77,9 @@ info "Checking Ambassador values:"
 values="$(helm get values -n "$TEST_NAMESPACE" ${AMB_INSTALLATION_NAME})"
 echo "$values"
 
-echo "$values" | grep -q "name: $TEST_NAMESPACE" || abort "no namespace found in values"
-echo "$values" | grep -q "name: http" || abort "no http port found in values"
+echo "$values" | grep -q -E "name: $TEST_NAMESPACE" || abort "no namespace found in values"
+echo "$values" | grep -q -E "name: http" || abort "no http port found in values"
+echo "$values" | grep "targetPort" | grep -q "8080" || abort "no targetPort: 8080 found in values"
 
 info "Checking the version of Ambassador that has been deployed is $AMB_IMAGE_TAG..."
 if ! amb_check_image_tag "$AMB_IMAGE_TAG" -n "$TEST_NAMESPACE"; then
