@@ -81,7 +81,9 @@ func (lc *HelmManager) GetManagerFor(o *unstructured.Unstructured) (release.Mana
 			if strings.Contains(k, ".") {
 				// if we detect a dot then we pass it as a value for backwards-compatibility
 				// for example, in `service.ports[0].port: 80`
-				valuesStrings[k] = fmt.Sprintf("%v", v)
+				vs := fmt.Sprintf("%v", v)
+				log.Info("setting packed-form value", "key", k, "value", vs)
+				valuesStrings[k] = vs
 			} else {
 				if err := unstructured.SetNestedField(oc.Object, v, "spec", k); err != nil {
 					log.Info("could not set spec value", "key", k, "value", v)
