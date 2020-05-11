@@ -281,7 +281,8 @@ wait_amb_addr() {
 	if [ $i -ge $timeout ]; then
 		warn "Timeout waiting for Ambassador's IP. Current services:"
 		kubectl get services $@
-		abort "Ambassador did not get an IP after $timeout seconds"
+		warn "Ambassador did not get an IP after $timeout seconds"
+		return 1
 	fi
 }
 
@@ -299,7 +300,8 @@ wait_not_amb_addr() {
 	if [ $i -ge $timeout ]; then
 		warn "Timeout waiting for Ambassador not not have an IP. Current services:"
 		kubectl get services $@
-		abort "Ambassador had an IP after $timeout seconds"
+		warn "Ambassador had an IP after $timeout seconds"
+		return 1
 	fi
 }
 
