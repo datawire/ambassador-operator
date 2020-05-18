@@ -61,13 +61,21 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 	}
 
 	if err := chartsMgr.Download(); err != nil {
-		log.Error(err, "Failed to download latest release")
+		message := "Failed to download latest release"
+
+		// report to Metriton
+		r.Report(message)
+
+		// ...and log it as well
+		log.Error(err, message)
+
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionReleaseFailed,
 			Status:  ambassador.StatusTrue,
 			Reason:  ambassador.ReasonDownloadError,
 			Message: err.Error(),
 		})
+
 		_ = r.updateResourceStatus(ambObj, status)
 		return reconcile.Result{RequeueAfter: r.checkInterval}, err
 	}
@@ -82,13 +90,21 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 	log := log.WithValues("release", chart.ReleaseName())
 
 	if err := chart.Sync(ctx); err != nil {
-		log.Error(err, "Failed to sync release")
+		message := "Failed to sync release"
+
+		// Report to Metriton
+		r.Report(message)
+
+		// ...and log it
+		log.Error(err, message)
+
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionIrreconcilable,
 			Status:  ambassador.StatusTrue,
 			Reason:  ambassador.ReasonReconcileError,
 			Message: err.Error(),
 		})
+
 		_ = r.updateResourceStatus(ambObj, status)
 		return reconcile.Result{RequeueAfter: r.checkInterval}, err
 	}
@@ -104,7 +120,13 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 		}
 		installedRelease, err := chart.InstallRelease(ctx)
 		if err != nil {
-			log.Error(err, "Installation of a new release failed")
+			message := "Installation of a new release failed"
+
+			// Report to Metriton
+			r.Report(message)
+
+			// ...and log it.
+			log.Error(err, message)
 
 			status.SetCondition(ambassador.AmbInsCondition{
 				Type:    ambassador.ConditionReleaseFailed,
@@ -112,6 +134,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 				Reason:  ambassador.ReasonInstallError,
 				Message: err.Error(),
 			})
+
 			_ = r.updateResourceStatus(ambObj, status)
 			return reconcile.Result{}, err
 		}
@@ -134,12 +157,17 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 		if installedRelease.Info != nil {
 			message = installedRelease.Info.Notes
 		}
+
+		// Report successful install!
+		r.Report(message)
+
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionDeployed,
 			Status:  ambassador.StatusTrue,
 			Reason:  ambassador.ReasonInstallSuccessful,
 			Message: message,
 		})
+
 		status.DeployedRelease = &ambassador.AmbassadorRelease{
 			Name:       installedRelease.Name,
 			Version:    installedRelease.Chart.Metadata.Version,
@@ -163,16 +191,23 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 
 		previousRelease, updatedRelease, err := chart.UpdateRelease(ctx)
 		if err != nil {
-			log.Error(err, "Release failed")
+			message := "Release failed"
+			log.Error(err, message)
+
+			// Report to Metriton
+			r.Report(message)
+
 			status.SetCondition(ambassador.AmbInsCondition{
 				Type:    ambassador.ConditionReleaseFailed,
 				Status:  ambassador.StatusTrue,
 				Reason:  ambassador.ReasonUpdateError,
 				Message: err.Error(),
 			})
+
 			_ = r.updateResourceStatus(ambObj, status)
 			return reconcile.Result{}, err
 		}
+
 		log.Info("Update required", "previousVersion", previousRelease.Version, "nextVersion", updatedRelease.Version)
 		log.Info("Previous version", "firstDeployed", previousRelease.Info.FirstDeployed, "status", previousRelease.Info.Status)
 		status.RemoveCondition(ambassador.ConditionReleaseFailed)
@@ -188,12 +223,17 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 		//if log.V(0).Enabled() {
 		//	fmt.Println(diffutil.Diff(previousRelease.Manifest, updatedRelease.Manifest))
 		//}
+
 		log.V(1).Info("Config values", "values", updatedRelease.Config)
 
 		message := ""
 		if updatedRelease.Info != nil {
 			message = updatedRelease.Info.Notes
 		}
+
+		// Report successful update to Metriton
+		r.Report(message)
+
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionDeployed,
 			Status:  ambassador.StatusTrue,
@@ -222,13 +262,21 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 
 	expectedRelease, err := chart.ReconcileRelease(ctx)
 	if err != nil {
-		log.Error(err, "Failed to reconcile release")
+		message := "Failed to reconcile release"
+
+		// Report to Metriton
+		r.Report(message)
+
+		// ... and log it
+		log.Error(err, message)
+
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionIrreconcilable,
 			Status:  ambassador.StatusTrue,
 			Reason:  ambassador.ReasonReconcileError,
 			Message: err.Error(),
 		})
+
 		_ = r.updateResourceStatus(ambObj, status)
 		return reconcile.Result{RequeueAfter: r.checkInterval}, err
 	}
@@ -241,7 +289,15 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 		}
 	}
 
-	log.Info("Reconciled release")
+	// Reconciled release!
+	message := "Reconciled release"
+
+	// Report to Metriton
+	r.Report(message)
+
+	// ... and log it
+	log.Info(message)
+
 	status.DeployedRelease = &ambassador.AmbassadorRelease{
 		Name:       expectedRelease.Name,
 		Version:    expectedRelease.Chart.Metadata.Version,
@@ -249,6 +305,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 		Manifest:   expectedRelease.Manifest,
 		Flavor:     r.flavor,
 	}
+
 	_ = r.updateResourceStatus(ambObj, status)
 	return reconcile.Result{RequeueAfter: r.checkInterval}, nil
 }

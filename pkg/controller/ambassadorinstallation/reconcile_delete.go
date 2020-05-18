@@ -34,7 +34,12 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 	status := ambassador.StatusFor(o)
 
 	if err := chartsMgr.Download(); err != nil {
-		log.Error(err, "Failed to download latest release")
+		message := "Failed to download latest release"
+		log.Error(err, message)
+
+		// Report to Metriton
+		r.Report(message)
+
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionReleaseFailed,
 			Status:  ambassador.StatusTrue,
@@ -42,6 +47,7 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 			Message: err.Error(),
 		})
 		_ = r.updateResourceStatus(o, status)
+
 		return reconcile.Result{RequeueAfter: r.checkInterval}, err
 	}
 	defer func() { _ = chartsMgr.Cleanup() }()
@@ -55,13 +61,21 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 	log.V(2).Info("Uninstalling release", "release", manager.ReleaseName())
 	_, err = manager.UninstallRelease(ctx)
 	if err != nil && !errors.Is(err, driver.ErrReleaseNotFound) {
-		log.Error(err, "Failed to uninstall release")
+		message := "Failed to uninstall release"
+
+		// Report to Metriton
+		r.Report(message)
+
+		// ...and log it
+		log.Error(err, message)
+
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionReleaseFailed,
 			Status:  ambassador.StatusTrue,
 			Reason:  ambassador.ReasonUninstallError,
 			Message: err.Error(),
 		})
+
 		_ = r.updateResourceStatus(o, status)
 		return reconcile.Result{}, err
 	}
@@ -78,6 +92,7 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 		})
 		status.DeployedRelease = nil
 	}
+
 	if err := r.updateResourceStatus(o, status); err != nil {
 		log.Info("Failed to update AmbassadorInstallation status")
 		return reconcile.Result{}, err
