@@ -64,7 +64,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 		message := "Failed to download latest release"
 
 		// report to Metriton
-		r.Report(message)
+		r.Report(message, ScoutMeta{"Error", err})
 
 		// ...and log it as well
 		log.Error(err, message)
@@ -93,7 +93,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 		message := "Failed to sync release"
 
 		// Report to Metriton
-		r.Report(message)
+		r.Report(message, ScoutMeta{"Error", err})
 
 		// ...and log it
 		log.Error(err, message)
@@ -123,7 +123,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 			message := "Installation of a new release failed"
 
 			// Report to Metriton
-			r.Report(message)
+			r.Report(message, ScoutMeta{"Error", err})
 
 			// ...and log it.
 			log.Error(err, message)
@@ -195,7 +195,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 			log.Error(err, message)
 
 			// Report to Metriton
-			r.Report(message)
+			r.Report(message, ScoutMeta{"Error", err})
 
 			status.SetCondition(ambassador.AmbInsCondition{
 				Type:    ambassador.ConditionReleaseFailed,
@@ -265,7 +265,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 		message := "Failed to reconcile release"
 
 		// Report to Metriton
-		r.Report(message)
+		r.Report(message, ScoutMeta{"Error", err})
 
 		// ... and log it
 		log.Error(err, message)

@@ -229,7 +229,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 				log.Info(message, "enableAES", enableAES, "installOSS", enableOSS)
 
 				// Report to Metriton
-				r.Report(message)
+				r.Report(message, ScoutMeta{"enableAES", enableAES}, ScoutMeta{"installOSS", enableOSS})
 
 				status.SetCondition(ambassador.AmbInsCondition{
 					Type:    ambassador.ConditionReleaseFailed,

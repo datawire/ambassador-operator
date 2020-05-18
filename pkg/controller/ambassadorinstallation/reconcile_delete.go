@@ -64,7 +64,7 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 		message := "Failed to uninstall release"
 
 		// Report to Metriton
-		r.Report(message)
+		r.Report(message, ScoutMeta{"Error", err})
 
 		// ...and log it
 		log.Error(err, message)
