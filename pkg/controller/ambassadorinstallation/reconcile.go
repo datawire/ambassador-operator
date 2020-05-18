@@ -118,7 +118,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	message := "Reconciling AmbassadorInstallation"
 
-	// Report beginning the reconcilation process to Metriton
+	// Report beginning the reconciliation process to Metriton
 	r.Report(message)
 
 	// ...and log it.
