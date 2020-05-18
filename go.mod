@@ -4,10 +4,12 @@ go 1.13
 
 require (
 	github.com/datawire/ambassador v1.4.2-0.20200421104605-233f33a2e1c4
+	github.com/google/uuid v1.1.1
 	github.com/gorhill/cronexpr v0.0.0-20180427100037-88b0669f7d75
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/operator-framework/operator-sdk v0.15.0
+	github.com/pkg/errors v0.8.1
 	github.com/rogpeppe/go-internal v1.5.2 // indirect
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/net v0.0.0-20200202094626-16171245cfb2 // indirect

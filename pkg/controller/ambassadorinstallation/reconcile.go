@@ -78,15 +78,13 @@ var (
 type ReconcileAmbassadorInstallation struct {
 	// This Client, initialized using mgr.Client() above, is a split Client
 	// that reads objects from the cache and writes to the apiserver
-	Client  client.Client
-	Scheme  *runtime.Scheme
-	Manager manager.Manager
-
-	EventRecorder record.EventRecorder
-	GVK           schema.GroupVersionKind
-
-	releaseHook ReleaseHookFunc
-
+	Client             client.Client
+	Scheme             *runtime.Scheme
+	Manager            manager.Manager
+	EventRecorder      record.EventRecorder
+	GVK                schema.GroupVersionKind
+	Scout              *Scout
+	releaseHook        ReleaseHookFunc
 	checkInterval      time.Duration
 	updateInterval     time.Duration
 	lastSucUpdateCheck time.Time
@@ -105,6 +103,7 @@ func NewReconcileAmbassadorInstallation(mgr manager.Manager) *ReconcileAmbassado
 		checkInterval:      checkInterval,
 		updateInterval:     updateInterval,
 		lastSucUpdateCheck: time.Time{},
+		Scout:              NewScout("reconcile"),
 	}
 }
 
@@ -115,12 +114,23 @@ func NewReconcileAmbassadorInstallation(mgr manager.Manager) *ReconcileAmbassado
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling AmbassadorInstallation")
+	message := "Reconciling AmbassadorInstallation"
+
+	// Reset the report index and initialize a trace value.
+	r.BeginReporting()
+
+	// Report beginning the reconciliation process to Metriton
+	r.ReportEvent("start_reconciliation")
+
+	// ...and log it.
+	reqLogger.Info(message)
 
 	ambInstName := types.NamespacedName{Name: request.Name, Namespace: request.Namespace}
 	ambIns, err := r.lookupAmbInst(ambInstName)
 	if err != nil {
-		log.Error(err, "Failed to lookup resource")
+		message := "Failed to lookup resource"
+
+		r.ReportError("fail_amb_inst_name", message, err)
 		return reconcile.Result{}, err
 	}
 
@@ -157,17 +167,22 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		return reconcile.Result{}, err
 	}
 	if !isFirstAmbIns {
+		message := fmt.Sprintf("There is a previous AmbassadorInstallation in this namespace. Disabling this one.")
+
+		// Report to Metriton
+		r.ReportEvent("disabling_previous_installation", ScoutMeta{"message", message})
+
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionIrreconcilable,
 			Status:  ambassador.StatusFalse,
 			Reason:  ambassador.ReasonDuplicateError,
-			Message: fmt.Sprintf("There is a previous AmbassadorInstallation in this namespace. Disabling this one."),
+			Message: message,
 		})
+
 		return reconcile.Result{}, r.updateResourceStatus(ambIns, status)
 	}
 
-	// check if there are finalizers installed for this instance: if not, install
-	// our finalizer.
+	// check if there are finalizers installed for this instance: if not, install our finalizer.
 	if !deleted && !contains(pendingFinalizers, defFinalizerID) {
 		log.V(1).Info("Adding finalizer", "ID", defFinalizerID)
 		finalizers := append(pendingFinalizers, defFinalizerID)
@@ -179,10 +194,14 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		return reconcile.Result{Requeue: true}, err
 	}
 
+	// Condition initialized
+	r.ReportEvent("condition_initialized", ScoutMeta{"message", "Condition initialized"})
+
 	status.SetCondition(ambassador.AmbInsCondition{
 		Type:   ambassador.ConditionInitialized,
 		Status: ambassador.StatusTrue,
 	})
+
 	status.RemoveCondition(ambassador.ConditionIrreconcilable)
 
 	// process all static Helm values: the default ones, the ones coming from files, etc...
@@ -210,16 +229,26 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	if enableAESUntyped, ok := specHelmValues["enableAES"]; ok {
 		if enableAES, ok := enableAESUntyped.(bool); ok {
 			if (!enableAES && !enableOSS) || (enableAES && enableOSS) {
-				log.Info("helmValues.enableAES and installOSS fields conflict with each other",
-					"enableAES", enableAES, "installOSS", enableOSS)
+				message := "helmValues.enableAES and installOSS fields conflict with each other"
+
+				log.Info(message, "enableAES", enableAES, "installOSS", enableOSS)
+
+				// Report to Metriton
+				r.ReportEvent("fail_helm_values_conflict",
+					ScoutMeta{"message", message},
+					ScoutMeta{"error", 0},
+					ScoutMeta{"enableAES", enableAES},
+					ScoutMeta{"installOSS", enableOSS})
+
 				status.SetCondition(ambassador.AmbInsCondition{
 					Type:    ambassador.ConditionReleaseFailed,
 					Status:  ambassador.StatusTrue,
 					Reason:  ambassador.ReasonParametersError,
-					Message: fmt.Sprintf("helmValues.enableAES and installOSS fields conflict with each other"),
+					Message: message,
 				})
+
 				_ = r.updateResourceStatus(ambIns, status)
-				return reconcile.Result{}, fmt.Errorf("helmValues.enableAES and installOSS fields conflict with each other")
+				return reconcile.Result{}, fmt.Errorf(message)
 			}
 		}
 	}
@@ -229,12 +258,18 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	if len(spec.BaseImage) > 0 {
 		repo, tag, err := parseRepoTag(spec.BaseImage)
 		if err != nil {
+			message := fmt.Sprintf("could not parse base image from %s", spec.BaseImage)
+
+			// Report to Metriton
+			r.ReportError("fail_parse_image", message, err)
+
 			status.SetCondition(ambassador.AmbInsCondition{
 				Type:    ambassador.ConditionReleaseFailed,
 				Status:  ambassador.StatusTrue,
 				Reason:  ambassador.ReasonParametersError,
-				Message: fmt.Sprintf("could not parse base image from %s", spec.BaseImage),
+				Message: message,
 			})
+
 			_ = r.updateResourceStatus(ambIns, status)
 			return reconcile.Result{}, err
 		}
@@ -265,7 +300,9 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		reqLogger.Info("AES: disabled")
 		err := unstructured.SetNestedField(ambIns.Object, false, "spec", "enableAES")
 		if err != nil {
-			reqLogger.Error(err, "could not set spec.enableAES")
+			message := "could not set spec.enableAES"
+			r.ReportError("fail_set_spec", message, err)
+			reqLogger.Error(err, message)
 		}
 
 		// We do not want to update image.repository and image.tag if they have already been populated by user supplied
@@ -293,12 +330,14 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 					Kind:    "AuthService",
 				}, request.Namespace)
 				if err != nil {
-					log.Error(err, "Could not look up AuthService in the cluster")
+					message := "Could not look up AuthService in the cluster"
+					r.ReportError("fail_no_authservice", message, err)
 					return reconcile.Result{}, err
 				}
 				if len(authServiceList.Items) > 0 {
-					err = fmt.Errorf("AuthService(s) exist in the cluster, please remove to upgrade to AES")
-					log.Error(err, "")
+					message := "AuthService(s) exist in the cluster, please remove to upgrade to AES"
+					err = fmt.Errorf(message)
+					r.ReportError("fail_existing_authservice", message, err)
 					return reconcile.Result{}, err
 				}
 
@@ -309,12 +348,14 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 					Kind:    "RateLimitService",
 				}, request.Namespace)
 				if err != nil {
-					log.Error(err, "Could not look up RateLimitService in the cluster")
+					message := "Could not look up RateLimitService in the cluster"
+					r.ReportError("fail_no_ratelimitservice", message, err)
 					return reconcile.Result{}, err
 				}
 				if len(rateLimitServiceList.Items) > 0 {
-					err = fmt.Errorf("RateLimitService(s) exist in the cluster, please remove to upgrade to AES")
-					log.Error(err, "")
+					message := "RateLimitService(s) exist in the cluster, please remove to upgrade to AES"
+					err = fmt.Errorf(message)
+					r.ReportError("fail_existing_ratelimitservice", message, err)
 					return reconcile.Result{}, err
 				}
 
@@ -335,12 +376,17 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	chartVersion, err := helm.NewChartVersionRule(spec.Version)
 	if err != nil {
 		message := fmt.Sprintf("could not parse version from %q", spec.Version)
+
+		// Report to Metriton
+		r.ReportError("fail_parse_chart_version", message, err)
+
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionReleaseFailed,
 			Status:  ambassador.StatusTrue,
 			Reason:  ambassador.ReasonParametersError,
 			Message: message,
 		})
+
 		_ = r.updateResourceStatus(ambIns, status)
 		return reconcile.Result{}, err
 	}
@@ -369,6 +415,11 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	window, err := NewUpdateWindow(spec.UpdateWindow)
 	if err != nil {
 		message := fmt.Sprintf("could not parse an update window from %s", spec.UpdateWindow)
+
+		// Report to Metriton
+		r.ReportError("fail_parse_update_window", message, err)
+
+		// ...and log the error as well.
 		reqLogger.Info(message)
 
 		status.SetCondition(ambassador.AmbInsCondition{
@@ -377,10 +428,12 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 			Reason:  ambassador.ReasonParametersError,
 			Message: message,
 		})
+
 		_ = r.updateResourceStatus(ambIns, status)
 		return reconcile.Result{}, err
 	}
 
+	r.ReportEvent("completed_reconciliation")
 	return r.tryInstallOrUpdate(ambIns, chartsMgr, window, isMigrating, flavor)
 }
 
@@ -391,4 +444,28 @@ func (r *ReconcileAmbassadorInstallation) updateResource(o runtime.Object) error
 func (r *ReconcileAmbassadorInstallation) updateResourceStatus(o *unstructured.Unstructured, status *ambassador.AmbassadorInstallationStatus) error {
 	o.Object["status"] = status
 	return r.Client.Status().Update(context.TODO(), o)
+}
+
+func (r *ReconcileAmbassadorInstallation) BeginReporting() {
+	r.Scout.Reset()
+}
+
+// ReportEvent sends an event to Metriton
+func (r *ReconcileAmbassadorInstallation) ReportEvent(eventName string, meta ...ScoutMeta) {
+	log.Info("[Metrics]", "event", eventName)
+	if err := r.Scout.Report(eventName, meta...); err != nil {
+		log.Info("[Metrics]", "event", eventName, "error", err)
+	}
+}
+
+// Utility function for reporting an error with a message and an error code,
+// sending the message and error in metadata.  Also logs it to the error log.
+func (r *ReconcileAmbassadorInstallation) ReportError(eventName string, message string, err error) {
+	// Send to Metriton
+	r.ReportEvent("reconcile_error",
+		ScoutMeta{"message", message},
+		ScoutMeta{"error", err})
+
+	// send to the error log
+	log.Error(err, message)
 }
