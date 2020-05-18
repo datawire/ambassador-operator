@@ -1,14 +1,13 @@
-// From ambassador/internal/pkg/edgectl/scout.go with some modifications.
+// From ambassador/internal/pkg/edgectl/scout.go with some modifications & simplifications.
 
 package ambassadorinstallation
 
 import (
-"fmt"
-
-"github.com/google/uuid"
-"github.com/pkg/errors"
-"github.com/datawire/ambassador-operator/version"
-"github.com/datawire/ambassador/pkg/metriton"
+	"context"
+	"github.com/datawire/ambassador-operator/version"
+	"github.com/datawire/ambassador/pkg/metriton"
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
 )
 
 // The Scout structure maintains an index, which is the count of calls
@@ -20,7 +19,7 @@ type Scout struct {
 	Reporter *metriton.Reporter
 }
 
-// Metadata is simply a key and an untyped value, passed in as a parameter
+// Metadata is simply a key and an untyped value, instances passed in as parameters
 // to (s *Scout) Report
 type ScoutMeta struct {
 	Key   string
@@ -30,7 +29,9 @@ type ScoutMeta struct {
 // Create a new Scout object, with a parameter stating what the Scout instance
 // will be reporting on.  The Ambassador Operator may be installing, updating,
 // or deleting the Ambassador installation.
-// @Alvaro please check that this is correct
+// TODO: @Alvaro please check that this is correct -- do we want to use the same
+// TODO: InstallIDFromFilesystem as was used by edgectl install?  Also,
+// TODO: is version.Version the version number we want to report?
 
 func NewScout(mode string) (s *Scout) {
 	return &Scout{
@@ -55,15 +56,6 @@ func NewScout(mode string) (s *Scout) {
 	}
 }
 
-// Utility function to set a particular key/value metadata pair.
-func (s *Scout) SetMetadatum(key string, value interface{}) {
-	oldValue, ok := s.Reporter.BaseMetadata[key]
-	if ok {
-		panic(fmt.Sprintf("trying to replace metadata[%q] = %q with %q", key, oldValue, value))
-	}
-	s.Reporter.BaseMetadata[key] = value
-}
-
 // Reporting out: Sends a report to Metriton which will create a new entry in the
 // Metriton database in the product_event table.
 func (s *Scout) Report(action string, meta ...ScoutMeta) error {
@@ -81,10 +73,13 @@ func (s *Scout) Report(action string, meta ...ScoutMeta) error {
 		metadata[metaItem.Key] = metaItem.Value
 	}
 
+	// TODO: @Alvaro, please check--is this the context we want to pass through
+	// TODO to Metriton?
 	_, err := s.Reporter.Report(context.TODO(), metadata)
 	if err != nil {
 		return errors.Wrap(err, "scout report")
 	}
+
 	// TODO: Do something useful (alert the user if there's an available
 	// upgrade?) with the response (discarded as "_" above)?
 

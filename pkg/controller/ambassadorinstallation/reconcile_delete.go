@@ -94,7 +94,8 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 	}
 
 	if err := r.updateResourceStatus(o, status); err != nil {
-		log.Info("Failed to update AmbassadorInstallation status")
+		message := "Failed to update AmbassadorInstallation status"
+		log.Info(message)
 		return reconcile.Result{}, err
 	}
 
@@ -106,7 +107,8 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 	}
 	o.SetFinalizers(finalizers)
 	if err := r.updateResource(o); err != nil {
-		log.Info("Failed to remove CR uninstall finalizer")
+		message := "Failed to remove CR uninstall finalizer"
+		log.Info(message)
 		return reconcile.Result{}, err
 	}
 

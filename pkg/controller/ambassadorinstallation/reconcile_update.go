@@ -84,7 +84,8 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 	chart, err := chartsMgr.GetManagerFor(ambObj)
 	defer func() { _ = chartsMgr.Cleanup() }()
 	if err != nil {
-		log.Error(err, "when obtaining the chart manager")
+		message := "when obtaining the chart manager"
+		log.Error(err, message)
 		return reconcile.Result{RequeueAfter: r.checkInterval}, err
 	}
 	log := log.WithValues("release", chart.ReleaseName())
@@ -114,11 +115,14 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 	if !chart.IsInstalled() {
 		log.Info("Ambassador is not currently installed: installing...",
 			"newVersion", chartsMgr.GetVersionRule().String())
+
 		for k, v := range chartsMgr.Values {
 			r.EventRecorder.Eventf(ambObj, "Warning", "OverrideValuesInUse",
 				"Chart value %q overridden to %q by Ambassador operator", k, v)
 		}
+
 		installedRelease, err := chart.InstallRelease(ctx)
+
 		if err != nil {
 			message := "Installation of a new release failed"
 
@@ -138,6 +142,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 			_ = r.updateResourceStatus(ambObj, status)
 			return reconcile.Result{}, err
 		}
+
 		status.RemoveCondition(ambassador.ConditionReleaseFailed)
 
 		if r.releaseHook != nil {

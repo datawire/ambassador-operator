@@ -79,20 +79,15 @@ type ReconcileAmbassadorInstallation struct {
 	// This Client, initialized using mgr.Client() above, is a split Client
 	// that reads objects from the cache and writes to the apiserver
 	Client             client.Client
-	Scheme            *runtime.Scheme
+	Scheme             *runtime.Scheme
 	Manager            manager.Manager
-
 	EventRecorder      record.EventRecorder
 	GVK                schema.GroupVersionKind
-
-	Scout		      *Scout
-
+	Scout              *Scout
 	releaseHook        ReleaseHookFunc
-
 	checkInterval      time.Duration
 	updateInterval     time.Duration
 	lastSucUpdateCheck time.Time
-
 	flavor             string
 	isMigrating        bool
 }
@@ -110,7 +105,7 @@ func NewReconcileAmbassadorInstallation(mgr manager.Manager) *ReconcileAmbassado
 		checkInterval:      checkInterval,
 		updateInterval:     updateInterval,
 		lastSucUpdateCheck: time.Time{},
-		Scout:				NewScout("reconcile"),
+		Scout:              NewScout("reconcile"),
 	}
 }
 
@@ -121,12 +116,20 @@ func NewReconcileAmbassadorInstallation(mgr manager.Manager) *ReconcileAmbassado
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	reqLogger.Info("Reconciling AmbassadorInstallation")
+	message := "Reconciling AmbassadorInstallation"
+
+	// Report beginning the reconcilation process to Metriton
+	r.Report(message)
+
+	// ...and log it.
+	reqLogger.Info(message)
 
 	ambInstName := types.NamespacedName{Name: request.Name, Namespace: request.Namespace}
 	ambIns, err := r.lookupAmbInst(ambInstName)
 	if err != nil {
-		log.Error(err, "Failed to lookup resource")
+		message := "Failed to lookup resource"
+		r.Report(message)
+		log.Error(err, message)
 		return reconcile.Result{}, err
 	}
 
@@ -178,8 +181,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		return reconcile.Result{}, r.updateResourceStatus(ambIns, status)
 	}
 
-	// check if there are finalizers installed for this instance: if not, install
-	// our finalizer.
+	// check if there are finalizers installed for this instance: if not, install our finalizer.
 	if !deleted && !contains(pendingFinalizers, defFinalizerID) {
 		log.V(1).Info("Adding finalizer", "ID", defFinalizerID)
 		finalizers := append(pendingFinalizers, defFinalizerID)
@@ -190,6 +192,9 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		// Need to requeue because finalizer update does not change metadata.generation
 		return reconcile.Result{Requeue: true}, err
 	}
+
+	// Condition initialized
+	r.Report("Condition initialized")
 
 	status.SetCondition(ambassador.AmbInsCondition{
 		Type:   ambassador.ConditionInitialized,
@@ -301,11 +306,13 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 					Kind:    "AuthService",
 				}, request.Namespace)
 				if err != nil {
-					log.Error(err, "Could not look up AuthService in the cluster")
+					message := "Could not look up AuthService in the cluster"
+					log.Error(err, message)
 					return reconcile.Result{}, err
 				}
 				if len(authServiceList.Items) > 0 {
-					err = fmt.Errorf("AuthService(s) exist in the cluster, please remove to upgrade to AES")
+					message := "AuthService(s) exist in the cluster, please remove to upgrade to AES"
+					err = fmt.Errorf(message)
 					log.Error(err, "")
 					return reconcile.Result{}, err
 				}
@@ -317,11 +324,13 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 					Kind:    "RateLimitService",
 				}, request.Namespace)
 				if err != nil {
-					log.Error(err, "Could not look up RateLimitService in the cluster")
+					message := "Could not look up RateLimitService in the cluster"
+					log.Error(err, message)
 					return reconcile.Result{}, err
 				}
 				if len(rateLimitServiceList.Items) > 0 {
-					err = fmt.Errorf("RateLimitService(s) exist in the cluster, please remove to upgrade to AES")
+					message := "RateLimitService(s) exist in the cluster, please remove to upgrade to AES"
+					err = fmt.Errorf(message)
 					log.Error(err, "")
 					return reconcile.Result{}, err
 				}
