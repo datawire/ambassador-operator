@@ -26,6 +26,8 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 	updateDeadline := time.Now().Add(defaultDeleteTimeout)
 	ctx, _ := context.WithDeadline(context.TODO(), updateDeadline)
 
+	r.ReportEvent("start_delete")
+
 	if !contains(pendingFinalizers, defFinalizerID) {
 		log.Info("Resource is terminated, skipping reconciliation")
 		return reconcile.Result{}, nil
@@ -34,7 +36,9 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 	status := ambassador.StatusFor(o)
 
 	if err := chartsMgr.Download(); err != nil {
-		log.Error(err, "Failed to download latest release")
+		// Report to Metriton & log
+		r.ReportError("reconcile_delete_error", "Failed to download latest release", err)
+
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionReleaseFailed,
 			Status:  ambassador.StatusTrue,
@@ -42,6 +46,7 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 			Message: err.Error(),
 		})
 		_ = r.updateResourceStatus(o, status)
+
 		return reconcile.Result{RequeueAfter: r.checkInterval}, err
 	}
 	defer func() { _ = chartsMgr.Cleanup() }()
@@ -55,13 +60,16 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 	log.V(2).Info("Uninstalling release", "release", manager.ReleaseName())
 	_, err = manager.UninstallRelease(ctx)
 	if err != nil && !errors.Is(err, driver.ErrReleaseNotFound) {
-		log.Error(err, "Failed to uninstall release")
+		// Report to Metriton & log
+		r.ReportError("fail_uninstall", "Failed to uninstall release", err)
+
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionReleaseFailed,
 			Status:  ambassador.StatusTrue,
 			Reason:  ambassador.ReasonUninstallError,
 			Message: err.Error(),
 		})
+
 		_ = r.updateResourceStatus(o, status)
 		return reconcile.Result{}, err
 	}
@@ -78,8 +86,9 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 		})
 		status.DeployedRelease = nil
 	}
+
 	if err := r.updateResourceStatus(o, status); err != nil {
-		log.Info("Failed to update AmbassadorInstallation status")
+		r.ReportError("fail_update_status", "Failed to update AmbassadorInstallation status", err)
 		return reconcile.Result{}, err
 	}
 
@@ -91,7 +100,7 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 	}
 	o.SetFinalizers(finalizers)
 	if err := r.updateResource(o); err != nil {
-		log.Info("Failed to remove CR uninstall finalizer")
+		r.ReportError("fail_uninstall_finalizer", "Failed to remove CR uninstall finalizer", err)
 		return reconcile.Result{}, err
 	}
 
@@ -100,9 +109,12 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 	// will see that the AmbassadorInstallation has been deleted
 	// and that there's nothing left to do.
 	if err := r.waitForDeletion(o); err != nil {
-		log.Info("Failed waiting for CR deletion")
+		r.ReportError("fail_waiting_for_cr_deletion", "Failed waiting for CR deletion", err)
 		return reconcile.Result{}, err
 	}
+
+	r.ReportEvent("completed_delete")
+
 	return reconcile.Result{}, nil
 }
 
