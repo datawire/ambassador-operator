@@ -119,7 +119,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	message := "Reconciling AmbassadorInstallation"
 
 	// Report beginning the reconciliation process to Metriton
-	r.Report(message)
+	r.Report("reconcile_start")
 
 	// ...and log it.
 	reqLogger.Info(message)
@@ -128,7 +128,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	ambIns, err := r.lookupAmbInst(ambInstName)
 	if err != nil {
 		message := "Failed to lookup resource"
-		r.Report(message)
+		r.Report("reconcile_error", ScoutMeta{"error", message})
 		log.Error(err, message)
 		return reconcile.Result{}, err
 	}
@@ -169,7 +169,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		message := fmt.Sprintf("There is a previous AmbassadorInstallation in this namespace. Disabling this one.")
 
 		// Report to Metriton
-		r.Report(message)
+		r.Report("reconcile_progress", ScoutMeta{"message", message})
 
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionIrreconcilable,
@@ -194,7 +194,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	}
 
 	// Condition initialized
-	r.Report("Condition initialized")
+	r.Report("reconcile_progress", ScoutMeta{"message", "Condition initialized"})
 
 	status.SetCondition(ambassador.AmbInsCondition{
 		Type:   ambassador.ConditionInitialized,
@@ -234,7 +234,10 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 				log.Info(message, "enableAES", enableAES, "installOSS", enableOSS)
 
 				// Report to Metriton
-				r.Report(message, ScoutMeta{"enableAES", enableAES}, ScoutMeta{"installOSS", enableOSS})
+				r.Report("reconcile_progress",
+					ScoutMeta{"message", message},
+					ScoutMeta{"enableAES", enableAES},
+					ScoutMeta{"installOSS", enableOSS})
 
 				status.SetCondition(ambassador.AmbInsCondition{
 					Type:    ambassador.ConditionReleaseFailed,
@@ -255,7 +258,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 			message := fmt.Sprintf("could not parse base image from %s", spec.BaseImage)
 
 			// Report to Metriton
-			r.Report(message)
+			r.Report("reconcile_progress", ScoutMeta{"message", message})
 
 			status.SetCondition(ambassador.AmbInsCondition{
 				Type:    ambassador.ConditionReleaseFailed,
@@ -313,7 +316,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 				if len(authServiceList.Items) > 0 {
 					message := "AuthService(s) exist in the cluster, please remove to upgrade to AES"
 					err = fmt.Errorf(message)
-					log.Error(err, "")
+					log.Error(err, message)
 					return reconcile.Result{}, err
 				}
 
@@ -331,7 +334,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 				if len(rateLimitServiceList.Items) > 0 {
 					message := "RateLimitService(s) exist in the cluster, please remove to upgrade to AES"
 					err = fmt.Errorf(message)
-					log.Error(err, "")
+					log.Error(err, message)
 					return reconcile.Result{}, err
 				}
 			}
@@ -352,7 +355,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		message := fmt.Sprintf("could not parse version from %q", spec.Version)
 
 		// Report to Metriton
-		r.Report(message)
+		r.Report("reconcile_progress", ScoutMeta{"message", message})
 
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionReleaseFailed,
@@ -391,7 +394,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		message := fmt.Sprintf("could not parse an update window from %s", spec.UpdateWindow)
 
 		// Report to Metriton
-		r.Report(message)
+		r.Report("reconcile_progress", ScoutMeta{"message", message})
 
 		// ...and log the error as well.
 		reqLogger.Info(message)
@@ -406,6 +409,8 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		_ = r.updateResourceStatus(ambIns, status)
 		return reconcile.Result{}, err
 	}
+
+	r.Report("reconcile_complete")
 
 	return r.tryInstallOrUpdate(ambIns, chartsMgr, window)
 }
@@ -423,6 +428,6 @@ func (r *ReconcileAmbassadorInstallation) updateResourceStatus(o *unstructured.U
 func (r *ReconcileAmbassadorInstallation) Report(eventName string, meta ...ScoutMeta) {
 	log.Info("[Metrics]", eventName)
 	if err := r.Scout.Report(eventName, meta...); err != nil {
-		log.Info("[Metrics]", eventName, "Error", err)
+		log.Info("[Metrics]", eventName, "error", err)
 	}
 }

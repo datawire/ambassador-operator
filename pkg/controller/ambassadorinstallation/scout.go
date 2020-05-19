@@ -26,26 +26,29 @@ type ScoutMeta struct {
 	Value interface{}
 }
 
+// Function to get an installID, given a Reporter.  This is a standard
+// function form since we aren't allowed to add methods to an external type.
+func ThisInstallID(r *metriton.Reporter) (string, error) {
+	id, err := metriton.InstallIDFromFilesystem(r)
+	if err != nil {
+		id = "00000000-0000-0000-0000-000000000000"
+		r.BaseMetadata["new_install"] = true
+		r.BaseMetadata["install_id_error"] = err.Error()
+	}
+	return id, nil
+}
+
+
 // Create a new Scout object, with a parameter stating what the Scout instance
 // will be reporting on.  The Ambassador Operator may be installing, updating,
 // or deleting the Ambassador installation.
-// TODO: @Alvaro please check that this is correct -- do we want to use the same
-// TODO: InstallIDFromFilesystem as was used by edgectl install?  Also,
-// TODO: is version.Version the version number we want to report?
-
 func NewScout(mode string) (s *Scout) {
 	return &Scout{
 		Reporter: &metriton.Reporter{
-			Application: "operator",
+			Application: "ambassador-operator",
 			Version:     version.Version,
-			GetInstallID: func(r *metriton.Reporter) (string, error) {
-				id, err := metriton.InstallIDFromFilesystem(r)
-				if err != nil {
-					id = "00000000-0000-0000-0000-000000000000"
-					r.BaseMetadata["new_install"] = true
-					r.BaseMetadata["install_id_error"] = err.Error()
-				}
-				return id, nil
+			GetInstallID: func (r *metriton.Reporter) (string, error) {
+				return ThisInstallID(r)
 			},
 			// Fixed (growing) metadata passed with every report
 			BaseMetadata: map[string]interface{}{
