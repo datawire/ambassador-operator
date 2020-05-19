@@ -128,7 +128,11 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	ambIns, err := r.lookupAmbInst(ambInstName)
 	if err != nil {
 		message := "Failed to lookup resource"
-		r.Report("reconcile_error", ScoutMeta{"error", message})
+
+		r.Report("reconcile_error",
+			ScoutMeta{"message", message},
+			ScoutMeta{"error", err})
+
 		log.Error(err, message)
 		return reconcile.Result{}, err
 	}
@@ -234,8 +238,9 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 				log.Info(message, "enableAES", enableAES, "installOSS", enableOSS)
 
 				// Report to Metriton
-				r.Report("reconcile_progress",
+				r.Report("reconcile_error",
 					ScoutMeta{"message", message},
+					ScoutMeta{"error", 0},
 					ScoutMeta{"enableAES", enableAES},
 					ScoutMeta{"installOSS", enableOSS})
 
@@ -258,7 +263,9 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 			message := fmt.Sprintf("could not parse base image from %s", spec.BaseImage)
 
 			// Report to Metriton
-			r.Report("reconcile_progress", ScoutMeta{"message", message})
+			r.Report("reconcile_error",
+				ScoutMeta{"message", message},
+				ScoutMeta{"error", err})
 
 			status.SetCondition(ambassador.AmbInsCondition{
 				Type:    ambassador.ConditionReleaseFailed,
@@ -355,7 +362,9 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		message := fmt.Sprintf("could not parse version from %q", spec.Version)
 
 		// Report to Metriton
-		r.Report("reconcile_progress", ScoutMeta{"message", message})
+		r.Report("reconcile_error",
+			ScoutMeta{"message", message},
+			ScoutMeta{"error", err})
 
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionReleaseFailed,
@@ -394,7 +403,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		message := fmt.Sprintf("could not parse an update window from %s", spec.UpdateWindow)
 
 		// Report to Metriton
-		r.Report("reconcile_progress", ScoutMeta{"message", message})
+		r.Report("reconcile_error", ScoutMeta{"message", message})
 
 		// ...and log the error as well.
 		reqLogger.Info(message)

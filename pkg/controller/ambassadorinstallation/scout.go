@@ -8,6 +8,7 @@ import (
 	"github.com/datawire/ambassador/pkg/metriton"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"os"
 )
 
 // The Scout structure maintains an index, which is the count of calls
@@ -29,13 +30,22 @@ type ScoutMeta struct {
 // Function to get an installID, given a Reporter.  This is a standard
 // function form since we aren't allowed to add methods to an external type.
 func ThisInstallID(r *metriton.Reporter) (string, error) {
-	id, err := metriton.InstallIDFromFilesystem(r)
-	if err != nil {
-		id = "00000000-0000-0000-0000-000000000000"
-		r.BaseMetadata["new_install"] = true
+	// Have cluster ID?
+	this_id := os.Getenv("AMBASSADOR_CLUSTER_ID")
+
+	// Have Scout ID?
+	if this_id == "" {
+		this_id = os.Getenv("AMBASSADOR_SCOUT_ID")
+	}
+
+	// No cluster or Scout ID?  Just create a null ID,
+	// and note the error in the BaseMetadata.
+	if this_id == "" {
+		this_id = "00000000-0000-0000-0000-000000000000"
 		r.BaseMetadata["install_id_error"] = err.Error()
 	}
-	return id, nil
+
+	return this_id, nil
 }
 
 

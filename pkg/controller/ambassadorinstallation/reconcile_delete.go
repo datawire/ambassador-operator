@@ -26,6 +26,8 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 	updateDeadline := time.Now().Add(defaultDeleteTimeout)
 	ctx, _ := context.WithDeadline(context.TODO(), updateDeadline)
 
+	r.Report("reconcile_delete")
+
 	if !contains(pendingFinalizers, defFinalizerID) {
 		log.Info("Resource is terminated, skipping reconciliation")
 		return reconcile.Result{}, nil
@@ -38,7 +40,9 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 		log.Error(err, message)
 
 		// Report to Metriton
-		r.Report(message)
+		r.Report("reconcile_delete_error",
+			ScoutMeta{"message", message},
+			ScoutMeta{"error", err})
 
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionReleaseFailed,
@@ -64,7 +68,9 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 		message := "Failed to uninstall release"
 
 		// Report to Metriton
-		r.Report(message, ScoutMeta{"Error", err})
+		r.Report("reconcile_delete_error",
+			ScoutMeta{"message", message},
+			ScoutMeta{"error", err})
 
 		// ...and log it
 		log.Error(err, message)
@@ -120,6 +126,9 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 		log.Info("Failed waiting for CR deletion")
 		return reconcile.Result{}, err
 	}
+	
+	r.Report("reconcile_delete_complete")
+
 	return reconcile.Result{}, nil
 }
 

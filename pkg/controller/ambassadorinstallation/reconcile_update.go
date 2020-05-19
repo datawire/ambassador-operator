@@ -67,7 +67,8 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 
 		// report to Metriton
 		r.Report("reconcile_install_or_update_error",
-			ScoutMeta{"message", message}, ScoutMeta{"error", err})
+			ScoutMeta{"message", message},
+			ScoutMeta{"error", err})
 
 		// ...and log it as well
 		log.Error(err, message)
@@ -98,7 +99,8 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 
 		// Report to Metriton
 		r.Report("reconcile_install_or_update_error",
-			ScoutMeta{"message", message}, ScoutMeta{"error", err})
+			ScoutMeta{"message", message},
+			ScoutMeta{"error", err})
 
 		// ...and log it
 		log.Error(err, message)
@@ -132,7 +134,8 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 
 			// Report to Metriton
 			r.Report("reconcile_install_or_update_error",
-				ScoutMeta{"message", message}, ScoutMeta{"error", err})
+				ScoutMeta{"message", message},
+				ScoutMeta{"error", err})
 
 			// ...and log it.
 			log.Error(err, message)
@@ -170,7 +173,8 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 		}
 
 		// Report successful install!
-		r.Report("reconcile_install_complete", ScoutMeta{"message", message})
+		r.Report("reconcile_install_complete",
+			ScoutMeta{"message", message})
 
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionDeployed,
@@ -207,7 +211,8 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 
 			// Report to Metriton
 			r.Report("reconcile_install_or_update_error",
-				ScoutMeta{"message", message}, ScoutMeta{"error", err})
+				ScoutMeta{"message", message},
+				ScoutMeta{"error", err})
 
 			status.SetCondition(ambassador.AmbInsCondition{
 				Type:    ambassador.ConditionReleaseFailed,
@@ -244,7 +249,8 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 		}
 
 		// Report successful update to Metriton
-		r.Report("reconcile_update_complete", ScoutMeta{"message", message})
+		r.Report("reconcile_update_complete",
+			ScoutMeta{"message", message})
 
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionDeployed,
@@ -278,7 +284,8 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 
 		// Report to Metriton
 		r.Report("reconcile_install_or_update_error",
-			ScoutMeta{"message", message}, ScoutMeta{"error", err})
+			ScoutMeta{"message", message},
+			ScoutMeta{"error", err})
 
 		// ... and log it
 		log.Error(err, message)
@@ -306,7 +313,8 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 	message := "Reconciled release"
 
 	// Report to Metriton
-	r.Report("reconcile_release_complete", ScoutMeta{"message", message})
+	r.Report("reconcile_release_complete",
+		ScoutMeta{"message", message})
 
 	// ... and log it
 	log.Info(message)
