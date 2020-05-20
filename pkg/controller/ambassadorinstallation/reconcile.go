@@ -118,6 +118,9 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	message := "Reconciling AmbassadorInstallation"
 
+	// Reset the report index and initialize a trace value.
+	r.BeginReporting()
+
 	// Report beginning the reconciliation process to Metriton
 	r.ReportEvent("reconcile_start")
 
@@ -426,6 +429,12 @@ func (r *ReconcileAmbassadorInstallation) updateResourceStatus(o *unstructured.U
 	o.Object["status"] = status
 	return r.Client.Status().Update(context.TODO(), o)
 }
+
+
+func (r *ReconcileAmbassadorInstallation) BeginReporting() {
+	r.Scout.Reset()
+}
+
 
 // ReportEvent sends an event to Metriton
 func (r *ReconcileAmbassadorInstallation) ReportEvent(eventName string, meta ...ScoutMeta) {
