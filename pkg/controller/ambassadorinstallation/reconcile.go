@@ -119,7 +119,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	message := "Reconciling AmbassadorInstallation"
 
 	// Report beginning the reconciliation process to Metriton
-	r.Report("reconcile_start")
+	r.ReportEvent("reconcile_start")
 
 	// ...and log it.
 	reqLogger.Info(message)
@@ -129,11 +129,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	if err != nil {
 		message := "Failed to lookup resource"
 
-		r.Report("reconcile_error",
-			ScoutMeta{"message", message},
-			ScoutMeta{"error", err})
-
-		log.Error(err, message)
+		r.ReportError("reconcile_error", message, err)
 		return reconcile.Result{}, err
 	}
 
@@ -173,7 +169,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		message := fmt.Sprintf("There is a previous AmbassadorInstallation in this namespace. Disabling this one.")
 
 		// Report to Metriton
-		r.Report("reconcile_progress", ScoutMeta{"message", message})
+		r.ReportEvent("reconcile_progress", ScoutMeta{"message", message})
 
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionIrreconcilable,
@@ -198,7 +194,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	}
 
 	// Condition initialized
-	r.Report("reconcile_progress", ScoutMeta{"message", "Condition initialized"})
+	r.ReportEvent("reconcile_progress", ScoutMeta{"message", "Condition initialized"})
 
 	status.SetCondition(ambassador.AmbInsCondition{
 		Type:   ambassador.ConditionInitialized,
@@ -238,7 +234,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 				log.Info(message, "enableAES", enableAES, "installOSS", enableOSS)
 
 				// Report to Metriton
-				r.Report("reconcile_error",
+				r.ReportEvent("reconcile_error",
 					ScoutMeta{"message", message},
 					ScoutMeta{"error", 0},
 					ScoutMeta{"enableAES", enableAES},
@@ -263,9 +259,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 			message := fmt.Sprintf("could not parse base image from %s", spec.BaseImage)
 
 			// Report to Metriton
-			r.Report("reconcile_error",
-				ScoutMeta{"message", message},
-				ScoutMeta{"error", err})
+			r.ReportError("reconcile_error", message, err)
 
 			status.SetCondition(ambassador.AmbInsCondition{
 				Type:    ambassador.ConditionReleaseFailed,
@@ -292,7 +286,9 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		reqLogger.Info("AES: disabled")
 		err := unstructured.SetNestedField(ambIns.Object, false, "spec", "enableAES")
 		if err != nil {
-			reqLogger.Error(err, "could not set spec.enableAES")
+			message := "could not set spec.enableAES"
+			r.ReportError("reconcile_error", message, err)
+			reqLogger.Error(err, message)
 		}
 
 		// We do not want to update image.repository and image.tag if they have already been populated by user supplied
@@ -317,13 +313,13 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 				}, request.Namespace)
 				if err != nil {
 					message := "Could not look up AuthService in the cluster"
-					log.Error(err, message)
+					r.ReportError("reconcile_error", message, err)
 					return reconcile.Result{}, err
 				}
 				if len(authServiceList.Items) > 0 {
 					message := "AuthService(s) exist in the cluster, please remove to upgrade to AES"
 					err = fmt.Errorf(message)
-					log.Error(err, message)
+					r.ReportError("reconcile_error", message, err)
 					return reconcile.Result{}, err
 				}
 
@@ -335,13 +331,13 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 				}, request.Namespace)
 				if err != nil {
 					message := "Could not look up RateLimitService in the cluster"
-					log.Error(err, message)
+					r.ReportError("reconcile_error", message, err)
 					return reconcile.Result{}, err
 				}
 				if len(rateLimitServiceList.Items) > 0 {
 					message := "RateLimitService(s) exist in the cluster, please remove to upgrade to AES"
 					err = fmt.Errorf(message)
-					log.Error(err, message)
+					r.ReportError("reconcile_error", message, err)
 					return reconcile.Result{}, err
 				}
 			}
@@ -362,9 +358,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		message := fmt.Sprintf("could not parse version from %q", spec.Version)
 
 		// Report to Metriton
-		r.Report("reconcile_error",
-			ScoutMeta{"message", message},
-			ScoutMeta{"error", err})
+		r.ReportError("reconcile_error", message, err)
 
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionReleaseFailed,
@@ -403,7 +397,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		message := fmt.Sprintf("could not parse an update window from %s", spec.UpdateWindow)
 
 		// Report to Metriton
-		r.Report("reconcile_error", ScoutMeta{"message", message})
+		r.ReportError("reconcile_error", message, err)
 
 		// ...and log the error as well.
 		reqLogger.Info(message)
@@ -419,7 +413,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		return reconcile.Result{}, err
 	}
 
-	r.Report("reconcile_complete")
+	r.ReportEvent("reconcile_complete")
 
 	return r.tryInstallOrUpdate(ambIns, chartsMgr, window)
 }
@@ -433,10 +427,22 @@ func (r *ReconcileAmbassadorInstallation) updateResourceStatus(o *unstructured.U
 	return r.Client.Status().Update(context.TODO(), o)
 }
 
-// Report sends an event to Metriton
-func (r *ReconcileAmbassadorInstallation) Report(eventName string, meta ...ScoutMeta) {
+// ReportEvent sends an event to Metriton
+func (r *ReconcileAmbassadorInstallation) ReportEvent(eventName string, meta ...ScoutMeta) {
 	log.Info("[Metrics]", eventName)
 	if err := r.Scout.Report(eventName, meta...); err != nil {
 		log.Info("[Metrics]", eventName, "error", err)
 	}
+}
+
+// Utility function for reporting an error with a message and an error code,
+// sending the message and error in metadata.  Also logs it to the error log.
+func (r *ReconcileAmbassadorInstallation) ReportError(eventName string, message string, err error) {
+	// Send to Metriton
+	r.ReportEvent("reconcile_error",
+		ScoutMeta{"message", message},
+		ScoutMeta{"error", err})
+
+	// send to the error log
+	log.Error(err, message)
 }

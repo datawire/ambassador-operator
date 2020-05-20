@@ -36,7 +36,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 	updateDeadline := time.Now().Add(defaultUpdateTimeout)
 	ctx, _ := context.WithDeadline(context.TODO(), updateDeadline)
 
-	r.Report("reconcile_install_or_update")
+	r.ReportEvent("reconcile_install_or_update")
 
 	now := time.Now()
 	status := ambassador.StatusFor(ambObj)
@@ -63,15 +63,8 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 	}
 
 	if err := chartsMgr.Download(); err != nil {
-		message := "Failed to download latest release"
-
-		// report to Metriton
-		r.Report("reconcile_install_or_update_error",
-			ScoutMeta{"message", message},
-			ScoutMeta{"error", err})
-
-		// ...and log it as well
-		log.Error(err, message)
+		// report to Metriton & log
+		r.ReportError("reconcile_install_or_update_error", "Failed to download latest release", err)
 
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionReleaseFailed,
@@ -95,15 +88,8 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 	log := log.WithValues("release", chart.ReleaseName())
 
 	if err := chart.Sync(ctx); err != nil {
-		message := "Failed to sync release"
-
-		// Report to Metriton
-		r.Report("reconcile_install_or_update_error",
-			ScoutMeta{"message", message},
-			ScoutMeta{"error", err})
-
-		// ...and log it
-		log.Error(err, message)
+		// Report to Metriton & log
+		r.ReportError("reconcile_install_or_update_error", "Failed to sync release", err)
 
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionIrreconcilable,
@@ -130,15 +116,8 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 		installedRelease, err := chart.InstallRelease(ctx)
 
 		if err != nil {
-			message := "Installation of a new release failed"
-
-			// Report to Metriton
-			r.Report("reconcile_install_or_update_error",
-				ScoutMeta{"message", message},
-				ScoutMeta{"error", err})
-
-			// ...and log it.
-			log.Error(err, message)
+			// Report to Metriton & log
+			r.ReportError("reconcile_install_or_update_error", "Installation of a new release failed", err)
 
 			status.SetCondition(ambassador.AmbInsCondition{
 				Type:    ambassador.ConditionReleaseFailed,
@@ -173,7 +152,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 		}
 
 		// Report successful install!
-		r.Report("reconcile_install_complete",
+		r.ReportEvent("reconcile_install_complete",
 			ScoutMeta{"message", message})
 
 		status.SetCondition(ambassador.AmbInsCondition{
@@ -206,13 +185,8 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 
 		previousRelease, updatedRelease, err := chart.UpdateRelease(ctx)
 		if err != nil {
-			message := "Release failed"
-			log.Error(err, message)
-
-			// Report to Metriton
-			r.Report("reconcile_install_or_update_error",
-				ScoutMeta{"message", message},
-				ScoutMeta{"error", err})
+			// Report to Metriton & log
+			r.ReportError("reconcile_install_or_update_error", "Release failed", err)
 
 			status.SetCondition(ambassador.AmbInsCondition{
 				Type:    ambassador.ConditionReleaseFailed,
@@ -249,7 +223,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 		}
 
 		// Report successful update to Metriton
-		r.Report("reconcile_update_complete",
+		r.ReportEvent("reconcile_update_complete",
 			ScoutMeta{"message", message})
 
 		status.SetCondition(ambassador.AmbInsCondition{
@@ -280,15 +254,8 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 
 	expectedRelease, err := chart.ReconcileRelease(ctx)
 	if err != nil {
-		message := "Failed to reconcile release"
-
-		// Report to Metriton
-		r.Report("reconcile_install_or_update_error",
-			ScoutMeta{"message", message},
-			ScoutMeta{"error", err})
-
-		// ... and log it
-		log.Error(err, message)
+		// Report to Metriton & log
+		r.ReportError("reconcile_install_or_update_error", "Failed to reconcile release", err)
 
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionIrreconcilable,
@@ -313,7 +280,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 	message := "Reconciled release"
 
 	// Report to Metriton
-	r.Report("reconcile_release_complete",
+	r.ReportEvent("reconcile_release_complete",
 		ScoutMeta{"message", message})
 
 	// ... and log it

@@ -4,11 +4,12 @@ package ambassadorinstallation
 
 import (
 	"context"
+	"os"
+
 	"github.com/datawire/ambassador-operator/version"
 	"github.com/datawire/ambassador/pkg/metriton"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"os"
 )
 
 // The Scout structure maintains an index, which is the count of calls
@@ -42,12 +43,11 @@ func ThisInstallID(r *metriton.Reporter) (string, error) {
 	// and note the error in the BaseMetadata.
 	if this_id == "" {
 		this_id = "00000000-0000-0000-0000-000000000000"
-		r.BaseMetadata["install_id_error"] = err.Error()
+		r.BaseMetadata["install_id_error"] = "no cluster or scout ID"
 	}
 
 	return this_id, nil
 }
-
 
 // Create a new Scout object, with a parameter stating what the Scout instance
 // will be reporting on.  The Ambassador Operator may be installing, updating,
@@ -57,7 +57,7 @@ func NewScout(mode string) (s *Scout) {
 		Reporter: &metriton.Reporter{
 			Application: "ambassador-operator",
 			Version:     version.Version,
-			GetInstallID: func (r *metriton.Reporter) (string, error) {
+			GetInstallID: func(r *metriton.Reporter) (string, error) {
 				return ThisInstallID(r)
 			},
 			// Fixed (growing) metadata passed with every report
