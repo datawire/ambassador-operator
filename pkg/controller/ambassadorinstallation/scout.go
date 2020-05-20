@@ -32,21 +32,21 @@ type ScoutMeta struct {
 // function form since we aren't allowed to add methods to an external type.
 func ThisInstallID(r *metriton.Reporter) (string, error) {
 	// Have cluster ID?
-	this_id := os.Getenv("AMBASSADOR_CLUSTER_ID")
+	thisID := os.Getenv("AMBASSADOR_CLUSTER_ID")
 
 	// Have Scout ID?
-	if this_id == "" {
-		this_id = os.Getenv("AMBASSADOR_SCOUT_ID")
+	if thisID == "" {
+		thisID = os.Getenv("AMBASSADOR_SCOUT_ID")
 	}
 
 	// No cluster or Scout ID?  Just create a null ID,
 	// and note the error in the BaseMetadata.
-	if this_id == "" {
-		this_id = "00000000-0000-0000-0000-000000000000"
+	if thisID == "" {
+		thisID = "00000000-0000-0000-0000-000000000000"
 		r.BaseMetadata["install_id_error"] = "no cluster or scout ID"
 	}
 
-	return this_id, nil
+	return thisID, nil
 }
 
 // Create a new Scout object, with a parameter stating what the Scout instance
