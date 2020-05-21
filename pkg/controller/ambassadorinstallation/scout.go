@@ -76,7 +76,6 @@ func (s *Scout) Reset() {
 	s.Reporter.BaseMetadata["trace_id"] = uuid.New().String()
 }
 
-
 // Reporting out: Sends a report to Metriton which will create a new entry in the
 // Metriton database in the product_event table.
 func (s *Scout) Report(action string, meta ...ScoutMeta) error {

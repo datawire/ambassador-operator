@@ -430,11 +430,9 @@ func (r *ReconcileAmbassadorInstallation) updateResourceStatus(o *unstructured.U
 	return r.Client.Status().Update(context.TODO(), o)
 }
 
-
 func (r *ReconcileAmbassadorInstallation) BeginReporting() {
 	r.Scout.Reset()
 }
-
 
 // ReportEvent sends an event to Metriton
 func (r *ReconcileAmbassadorInstallation) ReportEvent(eventName string, meta ...ScoutMeta) {
