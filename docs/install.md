@@ -44,9 +44,13 @@ You can also install the AES Operator from a Helm Chart.
   ```shell script
   helm repo add datawire https://getambassador.io
   ```
+- Create namespace `ambassador` where AES will be installed
+  ```shell script
+  kubectl create namespace ambassador
+  ```
 - Run the following command: 
   ```shell script
-  $ helm install stable/ambassador-operator
+  $ helm install ambassador-operator datawire/ambassador-operator
   ```
   This command deploys the Ambassador Operator in the `ambassador` namespace on the
   Kubernetes cluster in the default configuration (it is recommended to use the `ambassador`
