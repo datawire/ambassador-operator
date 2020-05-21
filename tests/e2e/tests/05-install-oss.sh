@@ -15,7 +15,7 @@ source "$this_dir/../common.sh"
 ########################################################################################################################
 
 # the versions of Ambassador to install
-IMAGE_REPOSITORY="quay.io/datawire/ambassador"
+IMAGE_REPOSITORY="${REL_REGISTRY}/ambassador"
 
 ########################################################################################################################
 

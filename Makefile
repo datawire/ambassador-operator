@@ -63,8 +63,9 @@ HELM_OPER_MANIF      = $(HELM_DIR)/templates/ambassador-operator.yaml
 IMAGE_EXTRA_FILE         ?=
 IMAGE_EXTRA_FILE_CONTENT ?=
 
-REL_REGISTRY        ?= quay.io/datawire
+REL_REGISTRY        ?= docker.io/datawire
 REL_AMB_OPER_IMAGE   = $(REL_REGISTRY)/$(AMB_OPER_IMAGE)
+export REL_REGISTRY
 
 # directory for docs
 DOCS_API_DIR         := docs/api
@@ -73,7 +74,7 @@ DOCS_API_DIR         := docs/api
 AMB_OPER_CHART_VALS  := $(TOP_DIR)/deploy/helm/ambassador-operator/values.yaml
 
 # Go flags
-GO_FLAGS             =
+GO_FLAGS             = -ldflags="-X pkg.controller.ambassadorinstallation.DefRegistry=$(REL_REGISTRY)"
 
 # shfmt flags
 SHFMT_ARGS           = -s -ln bash
