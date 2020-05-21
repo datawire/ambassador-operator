@@ -26,7 +26,7 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 	updateDeadline := time.Now().Add(defaultDeleteTimeout)
 	ctx, _ := context.WithDeadline(context.TODO(), updateDeadline)
 
-	r.ReportEvent("reconcile_delete")
+	r.ReportEvent("start_delete")
 
 	if !contains(pendingFinalizers, defFinalizerID) {
 		log.Info("Resource is terminated, skipping reconciliation")
@@ -61,7 +61,7 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 	_, err = manager.UninstallRelease(ctx)
 	if err != nil && !errors.Is(err, driver.ErrReleaseNotFound) {
 		// Report to Metriton & log
-		r.ReportError("reconcile_delete_error", "Failed to uninstall release", err)
+		r.ReportError("fail_uninstall", "Failed to uninstall release", err)
 
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionReleaseFailed,
@@ -88,7 +88,7 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 	}
 
 	if err := r.updateResourceStatus(o, status); err != nil {
-		r.ReportError("reconcile_delete_error", "Failed to update AmbassadorInstallation status", err)
+		r.ReportError("fail_update_status", "Failed to update AmbassadorInstallation status", err)
 		return reconcile.Result{}, err
 	}
 
@@ -100,7 +100,7 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 	}
 	o.SetFinalizers(finalizers)
 	if err := r.updateResource(o); err != nil {
-		r.ReportError("reconcile_delete_error", "Failed to remove CR uninstall finalizer", err)
+		r.ReportError("fail_uninstall_finalizer", "Failed to remove CR uninstall finalizer", err)
 		return reconcile.Result{}, err
 	}
 
@@ -109,11 +109,11 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 	// will see that the AmbassadorInstallation has been deleted
 	// and that there's nothing left to do.
 	if err := r.waitForDeletion(o); err != nil {
-		r.ReportError("reconcile_delete_error", "Failed waiting for CR deletion", err)
+		r.ReportError("fail_waiting_for_cr_deletion", "Failed waiting for CR deletion", err)
 		return reconcile.Result{}, err
 	}
 
-	r.ReportEvent("reconcile_delete_complete")
+	r.ReportEvent("completed_delete")
 
 	return reconcile.Result{}, nil
 }

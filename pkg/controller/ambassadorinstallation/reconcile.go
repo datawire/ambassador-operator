@@ -122,7 +122,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	r.BeginReporting()
 
 	// Report beginning the reconciliation process to Metriton
-	r.ReportEvent("reconcile_start")
+	r.ReportEvent("start_reconciliation")
 
 	// ...and log it.
 	reqLogger.Info(message)
@@ -132,7 +132,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	if err != nil {
 		message := "Failed to lookup resource"
 
-		r.ReportError("reconcile_error", message, err)
+		r.ReportError("fail_amb_inst_name", message, err)
 		return reconcile.Result{}, err
 	}
 
@@ -172,7 +172,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		message := fmt.Sprintf("There is a previous AmbassadorInstallation in this namespace. Disabling this one.")
 
 		// Report to Metriton
-		r.ReportEvent("reconcile_progress", ScoutMeta{"message", message})
+		r.ReportEvent("disabling_previous_installation", ScoutMeta{"message", message})
 
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionIrreconcilable,
@@ -197,7 +197,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	}
 
 	// Condition initialized
-	r.ReportEvent("reconcile_progress", ScoutMeta{"message", "Condition initialized"})
+	r.ReportEvent("condition_initialized", ScoutMeta{"message", "Condition initialized"})
 
 	status.SetCondition(ambassador.AmbInsCondition{
 		Type:   ambassador.ConditionInitialized,
@@ -237,7 +237,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 				log.Info(message, "enableAES", enableAES, "installOSS", enableOSS)
 
 				// Report to Metriton
-				r.ReportEvent("reconcile_error",
+				r.ReportEvent("fail_helm_values_conflict",
 					ScoutMeta{"message", message},
 					ScoutMeta{"error", 0},
 					ScoutMeta{"enableAES", enableAES},
@@ -262,7 +262,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 			message := fmt.Sprintf("could not parse base image from %s", spec.BaseImage)
 
 			// Report to Metriton
-			r.ReportError("reconcile_error", message, err)
+			r.ReportError("fail_parse_image", message, err)
 
 			status.SetCondition(ambassador.AmbInsCondition{
 				Type:    ambassador.ConditionReleaseFailed,
@@ -290,7 +290,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		err := unstructured.SetNestedField(ambIns.Object, false, "spec", "enableAES")
 		if err != nil {
 			message := "could not set spec.enableAES"
-			r.ReportError("reconcile_error", message, err)
+			r.ReportError("fail_set_spec", message, err)
 			reqLogger.Error(err, message)
 		}
 
@@ -316,13 +316,13 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 				}, request.Namespace)
 				if err != nil {
 					message := "Could not look up AuthService in the cluster"
-					r.ReportError("reconcile_error", message, err)
+					r.ReportError("fail_no_authservice", message, err)
 					return reconcile.Result{}, err
 				}
 				if len(authServiceList.Items) > 0 {
 					message := "AuthService(s) exist in the cluster, please remove to upgrade to AES"
 					err = fmt.Errorf(message)
-					r.ReportError("reconcile_error", message, err)
+					r.ReportError("fail_existing_authservice", message, err)
 					return reconcile.Result{}, err
 				}
 
@@ -334,13 +334,13 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 				}, request.Namespace)
 				if err != nil {
 					message := "Could not look up RateLimitService in the cluster"
-					r.ReportError("reconcile_error", message, err)
+					r.ReportError("fail_no_ratelimitservice", message, err)
 					return reconcile.Result{}, err
 				}
 				if len(rateLimitServiceList.Items) > 0 {
 					message := "RateLimitService(s) exist in the cluster, please remove to upgrade to AES"
 					err = fmt.Errorf(message)
-					r.ReportError("reconcile_error", message, err)
+					r.ReportError("fail_existing_ratelimitservice", message, err)
 					return reconcile.Result{}, err
 				}
 			}
@@ -361,7 +361,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		message := fmt.Sprintf("could not parse version from %q", spec.Version)
 
 		// Report to Metriton
-		r.ReportError("reconcile_error", message, err)
+		r.ReportError("fail_parse_chart_version", message, err)
 
 		status.SetCondition(ambassador.AmbInsCondition{
 			Type:    ambassador.ConditionReleaseFailed,
@@ -400,7 +400,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		message := fmt.Sprintf("could not parse an update window from %s", spec.UpdateWindow)
 
 		// Report to Metriton
-		r.ReportError("reconcile_error", message, err)
+		r.ReportError("fail_parse_update_window", message, err)
 
 		// ...and log the error as well.
 		reqLogger.Info(message)
@@ -416,7 +416,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		return reconcile.Result{}, err
 	}
 
-	r.ReportEvent("reconcile_complete")
+	r.ReportEvent("completed_reconciliation")
 
 	return r.tryInstallOrUpdate(ambIns, chartsMgr, window)
 }
