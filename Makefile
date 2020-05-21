@@ -13,7 +13,7 @@ TOP_DIR              = $(shell pwd)
 
 EXE                  = $(TOP_DIR)/build/ambassador-operator
 
-DEV_KUBECONFIG       = $$HOME/.kube/config
+DEV_KUBECONFIG      ?= $$HOME/.kube/config
 
 AMB_OPER_REPO        = github.com/datawire/ambassador-operator
 AMB_OPER_MAIN_PKG    = $(AMB_OPER_REPO)/cmd/manager
@@ -292,10 +292,9 @@ load: create-namespace release-collect-manifests load-crds   ## Load the CRDs an
 	$(Q)kubectl apply -n $(AMB_NS) -f $(ARTIFACT_OPER_MANIF)
 
 live: build load-crds ## Try to run the operator in the current cluster pointed by KUBECONFIG
-	$(Q)[ -n $KUBECONFIG ] || echo "WARNING: no DEV_KUBECONFIG defined: using default $(DEV_KUBECONFIG)"
-	@echo ">>> Starting operator with kubeconfig=$(DEV_KUBECONFIG)"
-	$(Q)WATCH_NAMESPACE="default" OPERATOR_NAME="ambassador-operator" \
-		$(EXE) --kubeconfig=$(DEV_KUBECONFIG) --zap-devel
+	@echo ">>> Starting operator with kubeconfig=$(KUBECONFIG) (from KUBECONFIG)"
+	$(Q)WATCH_NAMESPACE="$(AMB_NS)" OPERATOR_NAME="ambassador-operator" \
+		KUBECONFIG="$(KUBECONFIG)" $(EXE) --zap-devel
 
 ##############################
 # CI                         #
