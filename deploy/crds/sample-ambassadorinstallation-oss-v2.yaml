@@ -1,0 +1,7 @@
+apiVersion: getambassador.io/v2
+kind: AmbassadorInstallation
+metadata:
+  name: ambassador
+spec:
+  version: "*"
+  installOSS: true
