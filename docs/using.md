@@ -64,6 +64,18 @@ EOF
 Ambassador Edge Stack.
 Defaults to `false`.
 
+##### Upgrading from Ambassador API Gateway to Ambassador Edge Stack
+
+To upgrade from [Ambassador API Gateway](https://www.getambassador.io/docs/latest/topics/install/install-ambassador-oss/)
+to [Ambassador Edge Stack](https://www.getambassador.io/docs/), simply remove the `installOSS: true` field from the
+`AmbassadorInstallation` resource or set it to `false`.
+
+Keep an eye out for the `status` field in the `AmbassadorInstallation` resource, any errors will be posted there.
+
+##### Migration from Ambassador Edge Stack to Ambassador API Gateway
+
+Migration from [Ambassador Edge Stack](https://www.getambassador.io/docs/) to [Ambassador API Gateway](https://www.getambassador.io/docs/latest/topics/install/install-ambassador-oss/) is not currently supported via the operator.
+
 ### Installing a specific version
 
 To specify version numbers, use SemVer for the version number for any level of precision.
