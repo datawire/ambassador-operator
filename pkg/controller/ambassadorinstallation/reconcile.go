@@ -36,9 +36,6 @@ const (
 	// controller name for the events recorder
 	defControllerName = "ambassador-controller"
 
-	// default image used for the OSS version
-	defOSSImageRepository = "quay.io/datawire/ambassador"
-
 	// OSS flavor to set in DeployedRelease.flavor
 	flavorOSS = "OSS"
 
@@ -51,6 +48,9 @@ var (
 	defaultChartValues = map[string]string{
 		"deploymentTool": "amb-oper",
 	}
+
+	// default image used for the OSS version
+	defOSSImageRepository = fmt.Sprintf("%s/ambassador", DefRegistry)
 
 	// defExtraValuesFiles defines a list of files where we can find extra values
 	// NOTE: values in the last files will overwrite values in previous files!

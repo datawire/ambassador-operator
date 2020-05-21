@@ -17,3 +17,6 @@ TESTSUITES_DIR="$tests_dir/tests"
 
 # namespace for runing tests
 TEST_NAMESPACE="$AMB_NAMESPACE"
+
+# the default regitry
+REL_REGISTRY="${REL_REGISTRY:-docker.io/datawire}"
