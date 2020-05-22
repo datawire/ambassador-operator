@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/datawire/ambassador/pkg/helm"
+
 	rpb "helm.sh/helm/v3/pkg/release"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -14,8 +16,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/datawire/ambassador/pkg/helm"
 
 	ambassador "github.com/datawire/ambassador-operator/pkg/apis/getambassador/v2"
 )
@@ -36,9 +36,6 @@ const (
 	// controller name for the events recorder
 	defControllerName = "ambassador-controller"
 
-	// default image used for the OSS version
-	defOSSImageRepository = "quay.io/datawire/ambassador"
-
 	// OSS flavor to set in DeployedRelease.flavor
 	flavorOSS = "OSS"
 
@@ -48,9 +45,12 @@ const (
 
 var (
 	// some default Helm values
-	defaultChartValues = map[string]string{
+	defaultChartValues = HelmValues{
 		"deploymentTool": "amb-oper",
 	}
+
+	// default image used for the OSS version
+	defOSSImageRepository = fmt.Sprintf("%s/ambassador", DefRegistry)
 
 	// defExtraValuesFiles defines a list of files where we can find extra values
 	// NOTE: values in the last files will overwrite values in previous files!
@@ -88,8 +88,6 @@ type ReconcileAmbassadorInstallation struct {
 	checkInterval      time.Duration
 	updateInterval     time.Duration
 	lastSucUpdateCheck time.Time
-	flavor             string
-	isMigrating        bool
 }
 
 func NewReconcileAmbassadorInstallation(mgr manager.Manager) *ReconcileAmbassadorInstallation {
@@ -153,7 +151,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 
 	spec := ambObj.Spec
 	status := ambassador.StatusFor(ambIns)
-	specHelmValues := GetHelmValuesFrom(ambIns) // values passes in the spec: just for reading
+	specHelmValues := GetHelmValuesAmbIns(ambIns) // values passes in the spec: just for reading
 
 	// check if this AmbassadorInstallation was marked as a Duplicate in the past
 	lastDuplicateCondition := status.LastCondition(ambassador.AmbInsCondition{Reason: ambassador.ReasonDuplicateError})
@@ -206,12 +204,10 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 
 	status.RemoveCondition(ambassador.ConditionIrreconcilable)
 
-	helmValuesStrings := HelmValuesStrings{}
+	// process all static Helm values: the default ones, the ones coming from files, etc...
+	helmValues := HelmValues{}
+	helmValues.AppendFrom(defaultChartValues, true) // copy the default values
 
-	// copy all the values, both from the default values as from the user provided ones
-	for k, v := range defaultChartValues {
-		helmValuesStrings[k] = v
-	}
 	for _, f := range defExtraValuesFiles {
 		log.Info("Trying to load values from file", "file", f)
 		values, err := readValuesFile(f)
@@ -219,10 +215,11 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 			log.Info("Error when loading file", "file", f, "error", err)
 			continue
 		}
-		for k, v := range values {
-			log.Info("Settings value from file", "file", f, "var", k, "value", v)
-			helmValuesStrings[k] = v
-		}
+		helmValues.AppendFrom(values, true)
+	}
+	if err := helmValues.WriteToAmbIns(ambIns, false); err != nil {
+		reqLogger.Info("Internal error when adding static helm values: %v", err)
+		return reconcile.Result{}, err
 	}
 
 	// `enableAES: true` means `installOSS: false`
@@ -256,6 +253,8 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		}
 	}
 
+	helmValuesStrings := HelmValuesStrings{} // high-precedence values: they will override any other values
+
 	if len(spec.BaseImage) > 0 {
 		repo, tag, err := parseRepoTag(spec.BaseImage)
 		if err != nil {
@@ -279,7 +278,19 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		helmValuesStrings["image.tag"] = tag
 	}
 
+	flavor := ""
+	isMigrating := false
+
 	if enableOSS {
+		// Check user is not trying to migrate from AES to OSS...
+		if status.DeployedRelease != nil {
+			if status.DeployedRelease.Flavor != flavorOSS {
+				err = fmt.Errorf("migration from AES to OSS not supported")
+				log.Error(err, "")
+				return reconcile.Result{}, err
+			}
+		}
+
 		// This is a huge HACK! The line below should have been -
 		// helmValues["enableAES"] = false
 		// but NewHelmManager and its guts only accept map[string]string which is wrong, because not all Helm values
@@ -301,29 +312,54 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 			helmValuesStrings["image.repository"] = defOSSImageRepository
 		}
 
-		r.flavor = flavorOSS
+		flavor = flavorOSS
+		reqLogger.Info("Flavor: OSS")
+
 	} else {
 		if status.DeployedRelease != nil {
-			// if AES is already installed, then we don't need to look for AuthService or RateLimitService
-			log.Info("AuthService or RateLimitService must not exist in the cluster while upgrading from OSS to AES...")
-
 			if status.DeployedRelease.Flavor != flavorAES {
+				log.Info("Upgrading the cluster from OSS to AES...")
+
+				// if AES is already installed, then we don't need to look for AuthService or RateLimitService
+				log.Info("Checking that AuthService/RateLimitService do not exist in the cluster.")
+
 				log.Info("Checking for AuthService...")
 				authServiceList, err := r.lookupResourceList(&schema.GroupVersionKind{
 					Group:   "getambassador.io",
 					Version: "v2",
 					Kind:    "AuthService",
 				}, request.Namespace)
+
 				if err != nil {
-					message := "Could not look up AuthService in the cluster"
+					message := "could not look up AuthService in the cluster"
+					err = fmt.Errorf(message)
+					log.Error(err, "")
+
+					status.SetCondition(ambassador.AmbInsCondition{
+						Type:    ambassador.ConditionReleaseFailed,
+						Status:  ambassador.StatusTrue,
+						Reason:  ambassador.ReasonUpgradePrecondError,
+						Message: message,
+					})
+					_ = r.updateResourceStatus(ambIns, status)
 					r.ReportError("fail_no_authservice", message, err)
-					return reconcile.Result{}, err
+					return reconcile.Result{RequeueAfter: r.checkInterval}, err
 				}
+
 				if len(authServiceList.Items) > 0 {
 					message := "AuthService(s) exist in the cluster, please remove to upgrade to AES"
 					err = fmt.Errorf(message)
+					log.Error(err, "")
+
+					status.SetCondition(ambassador.AmbInsCondition{
+						Type:    ambassador.ConditionReleaseFailed,
+						Status:  ambassador.StatusTrue,
+						Reason:  ambassador.ReasonUpgradePrecondError,
+						Message: message,
+					})
+					_ = r.updateResourceStatus(ambIns, status)
 					r.ReportError("fail_existing_authservice", message, err)
-					return reconcile.Result{}, err
+					return reconcile.Result{RequeueAfter: r.checkInterval}, err
 				}
 
 				log.Info("Checking for RateLimitService...")
@@ -332,22 +368,45 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 					Version: "v2",
 					Kind:    "RateLimitService",
 				}, request.Namespace)
+
 				if err != nil {
-					message := "Could not look up RateLimitService in the cluster"
+					message := "could not look up RateLimitService in the cluster"
+					err = fmt.Errorf(message)
+					log.Error(err, "")
+
+					status.SetCondition(ambassador.AmbInsCondition{
+						Type:    ambassador.ConditionReleaseFailed,
+						Status:  ambassador.StatusTrue,
+						Reason:  ambassador.ReasonUpgradePrecondError,
+						Message: message,
+					})
+					_ = r.updateResourceStatus(ambIns, status)
 					r.ReportError("fail_no_ratelimitservice", message, err)
-					return reconcile.Result{}, err
+					return reconcile.Result{RequeueAfter: r.checkInterval}, err
 				}
+
 				if len(rateLimitServiceList.Items) > 0 {
 					message := "RateLimitService(s) exist in the cluster, please remove to upgrade to AES"
 					err = fmt.Errorf(message)
+					log.Error(err, "")
+
+					status.SetCondition(ambassador.AmbInsCondition{
+						Type:    ambassador.ConditionReleaseFailed,
+						Status:  ambassador.StatusTrue,
+						Reason:  ambassador.ReasonUpgradePrecondError,
+						Message: message,
+					})
+					_ = r.updateResourceStatus(ambIns, status)
 					r.ReportError("fail_existing_ratelimitservice", message, err)
-					return reconcile.Result{}, err
+					return reconcile.Result{RequeueAfter: r.checkInterval}, err
 				}
+
+				isMigrating = true
 			}
-			r.isMigrating = true
 		}
-		r.flavor = flavorAES
-		reqLogger.Info("AES: enabled")
+
+		flavor = flavorAES
+		reqLogger.Info("Flavor: AES")
 	}
 
 	if len(spec.LogLevel) > 0 {
@@ -417,8 +476,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	}
 
 	r.ReportEvent("completed_reconciliation")
-
-	return r.tryInstallOrUpdate(ambIns, chartsMgr, window)
+	return r.tryInstallOrUpdate(ambIns, chartsMgr, window, isMigrating, flavor)
 }
 
 func (r *ReconcileAmbassadorInstallation) updateResource(o runtime.Object) error {
@@ -446,7 +504,7 @@ func (r *ReconcileAmbassadorInstallation) ReportEvent(eventName string, meta ...
 // sending the message and error in metadata.  Also logs it to the error log.
 func (r *ReconcileAmbassadorInstallation) ReportError(eventName string, message string, err error) {
 	// Send to Metriton
-	r.ReportEvent("reconcile_error",
+	r.ReportEvent(eventName,
 		ScoutMeta{"message", message},
 		ScoutMeta{"error", err})
 

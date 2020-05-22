@@ -8,21 +8,21 @@ Please refer to the documentation for details on customizing the installation.
 
 First you should login with:
 ```shell script
-$ gcloud login
+gcloud login
 ```
 
 This will open a browser window for authenticating in the Google login page.
 
 Get some info from GKE with:
 ```shell script
-$ gcloud info
+gcloud info
 ```
 
 Then you can create your cluster in GKE. The following example creates a cluster
 named `MyKubernetesCluster` with four nodes. This will take several minutes to complete.
 
 ```shell script
-$ gcloud container clusters create MyKubernetesCluster \
+gcloud container clusters create MyKubernetesCluster \
 		--num-nodes 4 \
 		--machine-type n2-standard-2 \
 		--region us-east1-b \

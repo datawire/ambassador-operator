@@ -13,7 +13,7 @@ TOP_DIR              = $(shell pwd)
 
 EXE                  = $(TOP_DIR)/build/ambassador-operator
 
-DEV_KUBECONFIG       = $$HOME/.kube/config
+DEV_KUBECONFIG      ?= $$HOME/.kube/config
 
 AMB_OPER_REPO        = github.com/datawire/ambassador-operator
 AMB_OPER_MAIN_PKG    = $(AMB_OPER_REPO)/cmd/manager
@@ -63,8 +63,9 @@ HELM_OPER_MANIF      = $(HELM_DIR)/templates/ambassador-operator.yaml
 IMAGE_EXTRA_FILE         ?=
 IMAGE_EXTRA_FILE_CONTENT ?=
 
-REL_REGISTRY        ?= quay.io/datawire
+REL_REGISTRY        ?= docker.io/datawire
 REL_AMB_OPER_IMAGE   = $(REL_REGISTRY)/$(AMB_OPER_IMAGE)
+export REL_REGISTRY
 
 # directory for docs
 DOCS_API_DIR         := docs/api
@@ -73,7 +74,7 @@ DOCS_API_DIR         := docs/api
 AMB_OPER_CHART_VALS  := $(TOP_DIR)/deploy/helm/ambassador-operator/values.yaml
 
 # Go flags
-GO_FLAGS             =
+GO_FLAGS             = -ldflags="-X pkg.controller.ambassadorinstallation.DefRegistry=$(REL_REGISTRY)"
 
 # shfmt flags
 SHFMT_ARGS           = -s -ln bash
@@ -291,10 +292,9 @@ load: create-namespace release-collect-manifests load-crds   ## Load the CRDs an
 	$(Q)kubectl apply -n $(AMB_NS) -f $(ARTIFACT_OPER_MANIF)
 
 live: build load-crds ## Try to run the operator in the current cluster pointed by KUBECONFIG
-	$(Q)[ -n $KUBECONFIG ] || echo "WARNING: no DEV_KUBECONFIG defined: using default $(DEV_KUBECONFIG)"
-	@echo ">>> Starting operator with kubeconfig=$(DEV_KUBECONFIG)"
-	$(Q)WATCH_NAMESPACE="default" OPERATOR_NAME="ambassador-operator" \
-		$(EXE) --kubeconfig=$(DEV_KUBECONFIG) --zap-devel
+	@echo ">>> Starting operator with kubeconfig=$(KUBECONFIG) (from KUBECONFIG)"
+	$(Q)WATCH_NAMESPACE="$(AMB_NS)" OPERATOR_NAME="ambassador-operator" \
+		KUBECONFIG="$(KUBECONFIG)" $(EXE) --zap-devel
 
 ##############################
 # CI                         #

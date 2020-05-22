@@ -32,7 +32,8 @@ const (
 )
 
 // tryInstallOrUpdate checks if we need to update the Helm chart
-func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructured.Unstructured, chartsMgr HelmManager, window UpdateWindow) (reconcile.Result, error) {
+func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructured.Unstructured,
+	chartsMgr HelmManager, window UpdateWindow, isMigrating bool, flavor string) (reconcile.Result, error) {
 	updateDeadline := time.Now().Add(defaultUpdateTimeout)
 	ctx, _ := context.WithDeadline(context.TODO(), updateDeadline)
 
@@ -50,7 +51,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 	// try to install/upgrade in any other case (ie, the initial installation, the deployment
 	// is in an error state, etc)
 	// We ignore this upgrade check when OSS to AES migration is set in AmbassadorInstallation
-	if (currCondition.Type == ambassador.ConditionDeployed) && !r.isMigrating {
+	if (currCondition.Type == ambassador.ConditionDeployed) && !isMigrating {
 		if !status.LastCheckTime.Time.IsZero() && now.Sub(status.LastCheckTime.Time) < r.updateInterval {
 			log.Info("Last install/update was not so long ago", "updateInterval", r.updateInterval)
 			return reconcile.Result{RequeueAfter: r.checkInterval}, nil
@@ -167,7 +168,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 			Version:    installedRelease.Chart.Metadata.Version,
 			AppVersion: installedRelease.Chart.Metadata.AppVersion,
 			Manifest:   installedRelease.Manifest,
-			Flavor:     r.flavor,
+			Flavor:     flavor,
 		}
 
 		err = r.updateResourceStatus(ambObj, status)
@@ -238,7 +239,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 			Version:    updatedRelease.Chart.Metadata.Version,
 			AppVersion: updatedRelease.Chart.Metadata.AppVersion,
 			Manifest:   updatedRelease.Manifest,
-			Flavor:     r.flavor,
+			Flavor:     flavor,
 		}
 		err = r.updateResourceStatus(ambObj, status)
 		return reconcile.Result{RequeueAfter: r.checkInterval}, err
@@ -291,7 +292,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 		Version:    expectedRelease.Chart.Metadata.Version,
 		AppVersion: expectedRelease.Chart.Metadata.AppVersion,
 		Manifest:   expectedRelease.Manifest,
-		Flavor:     r.flavor,
+		Flavor:     flavor,
 	}
 
 	_ = r.updateResourceStatus(ambObj, status)
