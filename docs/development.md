@@ -22,7 +22,7 @@ the Ambassador Operator uses the Module feature of Go 1.11. You need to make
 sure that you enable it for your environment:
 
 ```bash
-$ export GO111MODULE=on
+export GO111MODULE=on
 ```
 
 
@@ -52,7 +52,7 @@ or your own fork. If you would like to send a PR it is required that you
 fork the repository.
 
 ```bash
-$ git clone https://github.com/datawire/ambassador-operator.git
+git clone https://github.com/datawire/ambassador-operator.git
 ```
 
 #### Local build
@@ -60,8 +60,8 @@ $ git clone https://github.com/datawire/ambassador-operator.git
 Now you obtained the sources it is time to build the bits:
 
 ```bash
-$ cd ambassador-operator
-$ make build
+cd ambassador-operator
+make build
 ```
 
 The `make` command will download all the necessary dependencies and build
@@ -77,7 +77,7 @@ Definitions are created in the cluster. The following command generates the
 CRDs from the types and loads them to the server.
 
 ```bash
-$ make load-crds
+make load-crds
 ```
 
 
@@ -88,7 +88,7 @@ are installed to the cluster, you can run the `build/ambassador-operator`
 as a regular executable from command line:
 
 ```bash
-$ ./build/ambassador-operator --kubeconfig ~/.kube/config --zap-devel
+./build/ambassador-operator --kubeconfig ~/.kube/config --zap-devel
 ```
 
 or from your preferred debugger.
@@ -102,7 +102,7 @@ The Ambassador Operator has both unit and end-to-end tests.
 To update the cluster-providers just run:
 
 ```commandline
-$ git submodule update --remote --merge
+git submodule update --remote --merge
 ```
 
 ### Unit tests
@@ -111,7 +111,7 @@ Used to validate the basic logic of the functions. Unit tests can be triggered
 with the following command:
 
 ```bash
-$ make test
+make test
 ```
 
 ### End-to-end tests
@@ -130,14 +130,14 @@ are working. During end-to-end tests the following steps are executed:
 They can be started with:
 
 ```bash
-$ make e2e
+make e2e
 ```
 
 End to end tests are located in `tests/e2e/` package.  You can run one of those tests with
 the `TEST` variable, like:
 
 ```shell script
-$ make e2e TEST="01-install-uninstall"
+make e2e TEST="01-install-uninstall"
 ```
 
 Note well that end-to-end tests require more CPU and memory for execution than the unit tests.
@@ -152,13 +152,13 @@ to make sure that the codebase meets formal standards. If you would like
 to execute the linting steps the following command can be used:
 
 ```bash
-$ make lint
+make lint
 ```
 
 You should also format your code (before submitting a PR) with:
 
 ```bash
-$ make format
+make format
 ```
 
 ## Contributions

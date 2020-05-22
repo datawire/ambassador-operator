@@ -10,7 +10,7 @@ The Azure CLI's default authentication method uses a web browser and access toke
 sign in. You should run the login command
 
 ```shell script
-$ az login
+az login
 ```
 
 and this will open your default browser and load an Azure sign-in page.
@@ -18,7 +18,7 @@ and this will open your default browser and load an Azure sign-in page.
 Now you can create a resource group with:
 
 ```shell script
-$ az group create --name MyGroup --location eastus
+az group create --name MyGroup --location eastus
 ```
 
 Then we will create an AKS cluster. The following example creates a cluster
@@ -27,13 +27,13 @@ is also enabled using the `--enable-addons monitoring` parameter. This will
 take several minutes to complete.
 
 ```shell script
-$ az aks create --resource-group MyGroup \
-    --name MyKubernetesCluster \
-    --node-count 4 \
-    --node-vm-size Standard_D12_v2 \
-    --network-plugin azure \
-    --enable-addons monitoring \
-    --generate-ssh-keys
+az aks create --resource-group MyGroup \
+  --name MyKubernetesCluster \
+  --node-count 4 \
+  --node-vm-size Standard_D12_v2 \
+  --network-plugin azure \
+  --enable-addons monitoring \
+  --generate-ssh-keys
 ```
 
 Some notes:

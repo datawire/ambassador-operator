@@ -15,26 +15,68 @@ const (
 	defHelmValuesFieldName = "helmValues"
 )
 
+var (
+	defHelmValuesFullPath = []string{"spec", defHelmValuesFieldName}
+)
+
 // HelmValues is the values for the Helm chart
 type HelmValues map[string]interface{}
 
-// HelmValuesStrings is the values using only strings
-type HelmValuesStrings map[string]string
-
-// GetHelmValuesFrom returns a `.spec.helmValues` field if it exists, nil otherwise
-func GetHelmValuesFrom(o *unstructured.Unstructured) HelmValues {
-	spec, ok := o.Object["spec"].(map[string]interface{})
-	if !ok {
+// GetHelmValuesAmbIns returns a `.spec.helmValues` field if it exists, nil otherwise
+func GetHelmValuesAmbIns(ambIns *unstructured.Unstructured) HelmValues {
+	helmValues, found, err := unstructured.NestedMap(ambIns.Object, defHelmValuesFullPath...)
+	if err != nil || !found {
 		return nil
 	}
+	return helmValues
+}
 
-	if helmValuesUntyped, ok := spec[defHelmValuesFieldName]; ok {
-		if helmValues, ok := helmValuesUntyped.(map[string]interface{}); ok {
-			return helmValues
+// Append appends all the `other` helm values
+func (hv HelmValues) GetString(k string) (string, bool, error) {
+	ambIns := &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"spec": map[string]interface{}{
+				defHelmValuesFieldName: (map[string]interface{})(hv),
+			},
+		},
+	}
+	return unstructured.NestedString(ambIns.Object, append(defHelmValuesFullPath, k)...)
+}
+
+// Append appends all the `other` helm values
+func (hv *HelmValues) AppendFrom(other HelmValues, overwrite bool) {
+	for k, v := range other {
+		_, found := (*hv)[k]
+		if found && !overwrite {
+			continue
 		}
+		(*hv)[k] = v
+	}
+}
+
+// WriteToAmbIns appends the values in an existing `.spec.helmValues` in a AmbassadorInstallation
+// (optionally overwritting values)
+func (hv HelmValues) WriteToAmbIns(ambIns *unstructured.Unstructured, overwrite bool) error {
+	for k, v := range hv {
+		fullPath := append(defHelmValuesFullPath, k)
+
+		log.Info("Settings helmValue", "var", k, "value", v)
+		_, found, err := unstructured.NestedFieldNoCopy(ambIns.Object, fullPath...)
+		if err != nil {
+			continue
+		}
+
+		// TODO: this does not perform a DeepCopy merge of existing-value with new-value
+		if found && !overwrite {
+			continue
+		}
+		_ = unstructured.SetNestedField(ambIns.Object, v, fullPath...)
 	}
 	return nil
 }
+
+// HelmValuesStrings is the values using only strings
+type HelmValuesStrings map[string]string
 
 // HelmManager is a remote Helm repo or a file, provided with an URL
 type HelmManager struct {
@@ -76,7 +118,7 @@ func (lc *HelmManager) GetManagerFor(o *unstructured.Unstructured) (release.Mana
 	// hack for allowing any type in the helmValues:
 	// translate all the `.spec.helmValues.*` to `.spec.*`, so factory.NewManager
 	// will get these values (with any type) for setting.
-	if helmValues := GetHelmValuesFrom(&oc); helmValues != nil {
+	if helmValues := GetHelmValuesAmbIns(&oc); helmValues != nil {
 		for k, v := range helmValues {
 			if strings.Contains(k, ".") {
 				// if we detect a dot then we pass it as a value for backwards-compatibility

@@ -6,19 +6,19 @@ Firstly, you must install the Ambassador Operator:
 
 - Load the Ambassador Operator CRD with the following command:
   ```shell script
-  $ kubectl apply -f https://github.com/datawire/ambassador-operator/releases/latest/download/ambassador-operator-crds.yaml  
+  kubectl apply -f https://github.com/datawire/ambassador-operator/releases/latest/download/ambassador-operator-crds.yaml
   ```
 - Install the Ambassador Operator in the `ambassador` namespace with the following command:
   ```shell script
-  $ kubectl apply -n ambassador -f https://github.com/datawire/ambassador-operator/releases/latest/download/ambassador-operator.yaml
+  kubectl apply -n ambassador -f https://github.com/datawire/ambassador-operator/releases/latest/download/ambassador-operator.yaml
   ```
   To install the Ambassador Operator in a different namespace, you can specify it in `NS` and then run
   the following command (that will replace the `ambassador` namespace by `$NS`):
   ```shell script
-  $ NS="custom-namespace"
-  $ curl -L https://github.com/datawire/ambassador-operator/releases/latest/download/ambassador-operator.yaml | \
-      sed -e "s/namespace: ambassador/namespace: $NS/g" | \
-      kubectl apply -n $NS -f -
+  NS="custom-namespace"
+  curl -L https://github.com/datawire/ambassador-operator/releases/latest/download/ambassador-operator.yaml | \
+    sed -e "s/namespace: ambassador/namespace: $NS/g" | \
+    kubectl apply -n $NS -f -
   ```
 
 Then you can create a new `AmbasasadorInstallation` _Custom Resource_ named `ambassador`
@@ -44,14 +44,16 @@ You can also install the AES Operator from a Helm Chart.
   ```shell script
   helm repo add datawire https://getambassador.io
   ```
+- Create namespace `ambassador` where AES will be installed
+  ```shell script
+  kubectl create namespace ambassador
+  ```
 - Run the following command: 
   ```shell script
-  $ helm install stable/ambassador-operator
+  helm install -n ambassador ambassador-operator datawire/ambassador-operator
   ```
   This command deploys the Ambassador Operator in the `ambassador` namespace on the
   Kubernetes cluster in the default configuration (it is recommended to use the `ambassador`
   namespace for easy upgrades).
 - Once the new Operator is working, create a new `AmbasasadorInstallation` _Custom Resource_ named `ambassador`
   as described [here](using.md).
-
-

@@ -8,6 +8,10 @@ spec:
   helmRepo: https://github.com/datawire/ambassador-chart/archive/master.zip
   helmValues:
     deploymentTool: amb-oper-kind
+    tolerations:
+      - key: "node-role.kubernetes.io/master"
+        operator: Equal
+        effect: NoSchedule
     replicaCount: 1
     nodeSelector:
       ingress-ready: "true"

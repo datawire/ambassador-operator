@@ -16,10 +16,10 @@ for filtering the release that are acceptable. It will then install
 Ambassador, using any extra arguments provided in the `AmbassadorInstallation`, like
 the `baseImage`, the `logLevel` or any of the [`helmValues`](#Helm-repo-and-values).
 
-For example, after applying a CR like this in a new cluster:
+For example, when you create an `AmbassadorInstallation` resource in a cluster:
  
 ```shell script
-$ cat <<EOF | kubectl apply -n ambassador -f -
+cat <<EOF | kubectl apply -n ambassador -f -
 apiVersion: getambassador.io/v2
 kind: AmbassadorInstallation
 metadata:
@@ -29,21 +29,58 @@ spec:
 EOF
 ```
 
-the operator will install immediately a new instance of Ambassador 1.1.0
+the operator will install immediately a new instance of Ambassador Edge Stack 1.1.0
 in the `ambassador` namespace. Removing this `AmbassadorInstallation` CR will
 uninstall Ambassador in this namespace. 
 
 ## Keeping your Ambassador updated
 
 After the initial installation of Ambassador, the Operator will check for updates
-every 24 hours and delay the update until the [_Update Window_](#Version-Syntax-and-Update-Window)
-allow the update to proceed. It will use the [_Version Syntax_](#Version-Syntax-and-Update-Window)
+every 24 hours and delay the update until the [_Update Window_](#specifying-an-update-window)
+allow the update to proceed. It will use the [_Version Syntax_](#installing-a-specific-version)
 for determining if any new release is acceptable. When a new release is available
 and acceptable, the Operator will upgrade the Ambassador installation.
 
-## Custom Configurations
+## Custom Configuration
 
-### Version Syntax and Update Window
+### Installing different flavors of Ambassador
+
+The operator installs [Ambassador Edge Stack](https://www.getambassador.io/docs/), by default. To install
+[Ambassador API Gateway](https://www.getambassador.io/docs/latest/topics/install/install-ambassador-oss/) (open source
+flavor of Ambassador without advanced features like automatic HTTPS, the Edge Policy Console UI, OAuth/OpenID Connect
+authentication support, integrated rate limiting, developer portal, etc) create the following `AmbassadorInstallation`
+resource in your cluster:
+```shell script
+cat <<EOF | kubectl apply -n ambassador -f -
+apiVersion: getambassador.io/v2
+kind: AmbassadorInstallation
+metadata:
+  name: ambassador
+spec:
+  installOSS: true
+EOF
+```
+`installOSS` in an optional field which, if set to `true` install Ambassador API Gateway instead of
+Ambassador Edge Stack.
+Defaults to `false`.
+
+##### Upgrading from Ambassador API Gateway to Ambassador Edge Stack
+
+To upgrade from [Ambassador API Gateway](https://www.getambassador.io/docs/latest/topics/install/install-ambassador-oss/)
+to [Ambassador Edge Stack](https://www.getambassador.io/docs/), simply remove the `installOSS: true` field from the
+`AmbassadorInstallation` resource or set it to `false`.
+
+Keep an eye out for the `status` field in the `AmbassadorInstallation` resource, any errors will be posted there.
+Use the following command to see the status:
+```shell script
+kubectl get ambassadorinstallations.getambassador.io -n <namespace> <resource name> -o wide
+```
+
+##### Migration from Ambassador Edge Stack to Ambassador API Gateway
+
+Migration from [Ambassador Edge Stack](https://www.getambassador.io/docs/) to [Ambassador API Gateway](https://www.getambassador.io/docs/latest/topics/install/install-ambassador-oss/) is not currently supported via the operator.
+
+### Installing a specific version
 
 To specify version numbers, use SemVer for the version number for any level of precision.
 This can optionally end in *.  For example:
@@ -63,6 +100,8 @@ This can optionally end in *.  For example:
 
 Read more about SemVer [here](https://github.com/Masterminds/semver#basic-comparisons).
 
+### Specifying an update window
+
 `updateWindow` is an optional item that will control when the updates can take place. This is used to
 force system updates to happen late at night if that’s what the sysadmins want.
 
@@ -75,10 +114,6 @@ force system updates to happen late at night if that’s what the sysadmins want
   * `5 1 * * *`: every first day of the month, at 5am
 - The Operator cannot guarantee minute time granularity, so specifying a minute in the crontab
   expression can lead to some updates happening sooner/later than expected.
-
-`installOSS` in an optional field which, if set to `true` install Ambassador API Gateway instead of
-Ambassador Edge Stack.
-Default: `false`.
 
 ## Helm repo and values
 
