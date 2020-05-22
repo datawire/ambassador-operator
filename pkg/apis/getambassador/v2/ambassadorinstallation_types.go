@@ -164,6 +164,7 @@ const (
 	ReasonUninstallError      AmbInsConditionReason = "UninstallError"
 	ReasonParametersError     AmbInsConditionReason = "ParametersError"
 	ReasonDuplicateError      AmbInsConditionReason = "DuplicateError"
+	ReasonUpgradePrecondError AmbInsConditionReason = "UpgradePrecondError"
 )
 
 func (s *AmbassadorInstallationStatus) ToMap() (map[string]interface{}, error) {
