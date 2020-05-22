@@ -195,7 +195,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	}
 
 	// Condition initialized
-	r.ReportEvent("condition_initialized", ScoutMeta{"message", "Condition initialized"})
+	r.ReportEvent("condition_initialized")
 
 	status.SetCondition(ambassador.AmbInsCondition{
 		Type:   ambassador.ConditionInitialized,
