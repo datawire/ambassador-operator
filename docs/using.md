@@ -19,7 +19,7 @@ the `baseImage`, the `logLevel` or any of the [`helmValues`](#Helm-repo-and-valu
 For example, when you create an `AmbassadorInstallation` resource in a cluster:
  
 ```shell script
-$ cat <<EOF | kubectl apply -n ambassador -f -
+cat <<EOF | kubectl apply -n ambassador -f -
 apiVersion: getambassador.io/v2
 kind: AmbassadorInstallation
 metadata:
@@ -51,7 +51,7 @@ flavor of Ambassador without advanced features like automatic HTTPS, the Edge Po
 authentication support, integrated rate limiting, developer portal, etc) create the following `AmbassadorInstallation`
 resource in your cluster:
 ```shell script
-$ cat <<EOF | kubectl apply -n ambassador -f -
+cat <<EOF | kubectl apply -n ambassador -f -
 apiVersion: getambassador.io/v2
 kind: AmbassadorInstallation
 metadata:
@@ -71,6 +71,10 @@ to [Ambassador Edge Stack](https://www.getambassador.io/docs/), simply remove th
 `AmbassadorInstallation` resource or set it to `false`.
 
 Keep an eye out for the `status` field in the `AmbassadorInstallation` resource, any errors will be posted there.
+Use the following command to see the status:
+```shell script
+kubectl get ambassadorinstallations.getambassador.io -n <namespace> <resource name> -o wide
+```
 
 ##### Migration from Ambassador Edge Stack to Ambassador API Gateway
 

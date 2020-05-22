@@ -4,15 +4,15 @@ In order to release a new version of the Ambassador Operator we should:
 
 - Switch to the master branch
   ```shell script
-  $ git co master
+  git co master
   ```
 - Create a new tag:
   ```shell script
-  $ git tag -a v1.0
+  git tag -a v1.0
   ```
 - Push tags
   ```shell script
-  $ git push --tags
+  git push --tags
   ```
 
 This should trigger the following processes:
@@ -38,13 +38,13 @@ release something from your laptop.
   (like the default ones, like `DefaultResourceGroup-EUS`).
 - Run the following command:
   ```shell script
-  $ AZ_RES_GRP="DefaultResourceGroup-EUS" \
-    CLUSTER_REGISTRY="datawire" \
-    CLUSTER_PROVIDER="azure" \
-    AZ_AUTH_FILE=<AUTHENTICATION_FILE> \
-    TRAVIS=true \
-    AMB_OPER_TAG=<TAG> \
-    make ci/publish-image-cloud
+  AZ_RES_GRP="DefaultResourceGroup-EUS" \
+  CLUSTER_REGISTRY="datawire" \
+  CLUSTER_PROVIDER="azure" \
+  AZ_AUTH_FILE=<AUTHENTICATION_FILE> \
+  TRAVIS=true \
+  AMB_OPER_TAG=<TAG> \
+  make ci/publish-image-cloud
   ```
 
 
