@@ -3,8 +3,9 @@ package ambassadorinstallation
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sort"
+
+	"k8s.io/apimachinery/pkg/runtime/schema"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"

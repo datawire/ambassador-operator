@@ -292,14 +292,35 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 					Version: "v2",
 					Kind:    "AuthService",
 				}, request.Namespace)
+
 				if err != nil {
-					log.Error(err, "Could not look up AuthService in the cluster")
-					return reconcile.Result{}, err
-				}
-				if len(authServiceList.Items) > 0 {
-					err = fmt.Errorf("AuthService(s) exist in the cluster, please remove to upgrade to AES")
+					message := "could not look up AuthService in the cluster"
+					err = fmt.Errorf(message)
 					log.Error(err, "")
-					return reconcile.Result{}, err
+
+					status.SetCondition(ambassador.AmbInsCondition{
+						Type:    ambassador.ConditionReleaseFailed,
+						Status:  ambassador.StatusTrue,
+						Reason:  ambassador.ReasonUpgradePrecondError,
+						Message: message,
+					})
+					_ = r.updateResourceStatus(ambIns, status)
+					return reconcile.Result{RequeueAfter: r.checkInterval}, err
+				}
+
+				if len(authServiceList.Items) > 0 {
+					message := "AuthService(s) exist in the cluster, please remove to upgrade to AES"
+					err = fmt.Errorf(message)
+					log.Error(err, "")
+
+					status.SetCondition(ambassador.AmbInsCondition{
+						Type:    ambassador.ConditionReleaseFailed,
+						Status:  ambassador.StatusTrue,
+						Reason:  ambassador.ReasonUpgradePrecondError,
+						Message: message,
+					})
+					_ = r.updateResourceStatus(ambIns, status)
+					return reconcile.Result{RequeueAfter: r.checkInterval}, err
 				}
 
 				log.Info("Checking for RateLimitService...")
@@ -308,14 +329,35 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 					Version: "v2",
 					Kind:    "RateLimitService",
 				}, request.Namespace)
+
 				if err != nil {
-					log.Error(err, "Could not look up RateLimitService in the cluster")
-					return reconcile.Result{}, err
-				}
-				if len(rateLimitServiceList.Items) > 0 {
-					err = fmt.Errorf("RateLimitService(s) exist in the cluster, please remove to upgrade to AES")
+					message := "could not look up RateLimitService in the cluster"
+					err = fmt.Errorf(message)
 					log.Error(err, "")
-					return reconcile.Result{}, err
+
+					status.SetCondition(ambassador.AmbInsCondition{
+						Type:    ambassador.ConditionReleaseFailed,
+						Status:  ambassador.StatusTrue,
+						Reason:  ambassador.ReasonUpgradePrecondError,
+						Message: message,
+					})
+					_ = r.updateResourceStatus(ambIns, status)
+					return reconcile.Result{RequeueAfter: r.checkInterval}, err
+				}
+
+				if len(rateLimitServiceList.Items) > 0 {
+					message := "RateLimitService(s) exist in the cluster, please remove to upgrade to AES"
+					err = fmt.Errorf(message)
+					log.Error(err, "")
+
+					status.SetCondition(ambassador.AmbInsCondition{
+						Type:    ambassador.ConditionReleaseFailed,
+						Status:  ambassador.StatusTrue,
+						Reason:  ambassador.ReasonUpgradePrecondError,
+						Message: message,
+					})
+					_ = r.updateResourceStatus(ambIns, status)
+					return reconcile.Result{RequeueAfter: r.checkInterval}, err
 				}
 
 				isMigrating = true
