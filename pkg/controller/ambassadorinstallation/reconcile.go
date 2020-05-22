@@ -496,7 +496,7 @@ func (r *ReconcileAmbassadorInstallation) BeginReporting() {
 func (r *ReconcileAmbassadorInstallation) ReportEvent(eventName string, meta ...ScoutMeta) {
 	log.Info("[Metrics]", eventName)
 	if err := r.Scout.Report(eventName, meta...); err != nil {
-		log.Info("[Metrics]", eventName, "error", err)
+		log.Info("[Metrics]", "event", eventName, "error", err)
 	}
 }
 
