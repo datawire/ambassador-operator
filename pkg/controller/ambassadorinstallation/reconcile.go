@@ -499,7 +499,6 @@ func (r *ReconcileAmbassadorInstallation) updateResourceStatus(o *unstructured.U
 // Initialize the Scout instance and reset.
 func (r *ReconcileAmbassadorInstallation) BeginReporting(mode string, installID types.UID) {
 	r.Scout = NewScout(mode, installID)
-	r.Scout.Reset()
 }
 
 // ReportEvent sends an event to Metriton

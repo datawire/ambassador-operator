@@ -34,6 +34,7 @@ type ScoutMeta struct {
 // or deleting the Ambassador installation.
 func NewScout(mode string, installID types.UID) (s *Scout) {
 	return &Scout{
+		index: 0,
 		Reporter: &metriton.Reporter{
 			Application: "ambassador-operator",
 			Version:     version.Version,
@@ -47,13 +48,6 @@ func NewScout(mode string, installID types.UID) (s *Scout) {
 			},
 		},
 	}
-}
-
-// Reset the reporting object: initialize a new traceID and reset the
-// index count to zero.
-func (s *Scout) Reset() {
-	s.index = 0
-	s.Reporter.BaseMetadata["trace_id"] = uuid.New().String()
 }
 
 // Reporting out: Sends a report to Metriton which will create a new entry in the
