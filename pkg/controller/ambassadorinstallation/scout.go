@@ -6,6 +6,8 @@ import (
 	"context"
 	"os"
 
+	"k8s.io/apimachinery/pkg/types"
+
 	"github.com/datawire/ambassador-operator/version"
 	"github.com/datawire/ambassador/pkg/metriton"
 	"github.com/google/uuid"
@@ -30,6 +32,7 @@ type ScoutMeta struct {
 
 // Function to get an installID, given a Reporter.  This is a standard
 // function form since we aren't allowed to add methods to an external type.
+// TODO: rewrite to sync better with other install_id use cases.
 func ThisInstallID(r *metriton.Reporter) (string, error) {
 	// Have cluster ID?
 	thisID := os.Getenv("AMBASSADOR_CLUSTER_ID")
@@ -52,13 +55,13 @@ func ThisInstallID(r *metriton.Reporter) (string, error) {
 // Create a new Scout object, with a parameter stating what the Scout instance
 // will be reporting on.  The Ambassador Operator may be installing, updating,
 // or deleting the Ambassador installation.
-func NewScout(mode string) (s *Scout) {
+func NewScout(mode string, installID types.UID) (s *Scout) {
 	return &Scout{
 		Reporter: &metriton.Reporter{
 			Application: "ambassador-operator",
 			Version:     version.Version,
 			GetInstallID: func(r *metriton.Reporter) (string, error) {
-				return ThisInstallID(r)
+				return string(installID), nil
 			},
 			// Fixed (growing) metadata passed with every report
 			BaseMetadata: map[string]interface{}{

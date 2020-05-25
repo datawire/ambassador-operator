@@ -103,7 +103,7 @@ func NewReconcileAmbassadorInstallation(mgr manager.Manager) *ReconcileAmbassado
 		checkInterval:      checkInterval,
 		updateInterval:     updateInterval,
 		lastSucUpdateCheck: time.Time{},
-		Scout:              NewScout("reconcile"),
+		Scout:              nil,
 	}
 }
 
@@ -114,25 +114,23 @@ func NewReconcileAmbassadorInstallation(mgr manager.Manager) *ReconcileAmbassado
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (reconcile.Result, error) {
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	message := "Reconciling AmbassadorInstallation"
-
-	// Reset the report index and initialize a trace value.
-	r.BeginReporting()
-
-	// Report beginning the reconciliation process to Metriton
-	r.ReportEvent("start_reconciliation")
 
 	// ...and log it.
-	reqLogger.Info(message)
+	reqLogger.Info("Reconciling AmbassadorInstallation")
 
 	ambInstName := types.NamespacedName{Name: request.Name, Namespace: request.Namespace}
 	ambIns, err := r.lookupAmbInst(ambInstName)
+
 	if err != nil {
 		message := "Failed to lookup resource"
-
-		r.ReportError("fail_amb_inst_name", message, err)
 		return reconcile.Result{}, err
 	}
+
+	// Reset the report index and initialize the Reporter.
+	r.BeginReporting("reconcile", ambIns.GetUID())
+
+	// Report beginning the reconciliation process to Metriton
+	r.ReportEvent("start_reconciliation")
 
 	// This is only going to happen when we could not find the AmbassadorInstallation resource
 	if ambIns == nil {
@@ -488,7 +486,9 @@ func (r *ReconcileAmbassadorInstallation) updateResourceStatus(o *unstructured.U
 	return r.Client.Status().Update(context.TODO(), o)
 }
 
-func (r *ReconcileAmbassadorInstallation) BeginReporting() {
+// Initialize the Scout instance and reset.
+func (r *ReconcileAmbassadorInstallation) BeginReporting(mode string, installID types.UID) {
+	r.Scout = NewScout(mode, installID)
 	r.Scout.Reset()
 }
 
