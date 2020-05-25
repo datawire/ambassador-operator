@@ -42,6 +42,13 @@ tags
 
 ########################################################################
 
+# Mac desktop database
+.DS_Store
+
+# GoLand/PyCharm settings.
+.idea
+
+# Project ignores
 build/_output
 build/_test
 build/ambassador-operator
