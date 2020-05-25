@@ -122,7 +122,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	ambIns, err := r.lookupAmbInst(ambInstName)
 
 	if err != nil {
-		log.Info("Failed to lookup resource")
+		log.Error(err, "Failed to lookup resource")
 		return reconcile.Result{}, err
 	}
 
