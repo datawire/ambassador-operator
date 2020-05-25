@@ -126,17 +126,18 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		return reconcile.Result{}, err
 	}
 
-	// Reset the report index and initialize the Reporter.  No calls
-	// to r.ReportEvent, r.ReportError are allowed before this point.
-	r.BeginReporting("reconcile", ambIns.GetUID())
-
-	// Report beginning the reconciliation process to Metriton
-	r.ReportEvent("start_reconciliation")
-
 	// This is only going to happen when we could not find the AmbassadorInstallation resource
 	if ambIns == nil {
 		return reconcile.Result{}, nil
 	}
+
+	// Reset the report index and initialize the Reporter.  No calls
+	// to r.ReportEvent, r.ReportError are allowed before this point.  ambIns
+	// must not be nil.
+	r.BeginReporting("reconcile", ambIns.GetUID())
+
+	// Report beginning the reconciliation process to Metriton
+	r.ReportEvent("start_reconciliation")
 
 	deleted := ambIns.GetDeletionTimestamp() != nil
 	pendingFinalizers := ambIns.GetFinalizers()
