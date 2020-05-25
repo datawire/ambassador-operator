@@ -126,7 +126,8 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		return reconcile.Result{}, err
 	}
 
-	// Reset the report index and initialize the Reporter.
+	// Reset the report index and initialize the Reporter.  No calls
+	// to r.ReportEvent, r.ReportError are allowed before this point.
 	r.BeginReporting("reconcile", ambIns.GetUID())
 
 	// Report beginning the reconciliation process to Metriton
