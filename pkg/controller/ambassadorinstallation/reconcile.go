@@ -159,6 +159,15 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		return reconcile.Result{}, nil
 	}
 
+	// Reset the report index and initialize the Reporter.
+	// IMPORTANT: no calls to r.ReportEvent, r.ReportError are allowed before this point.
+	// IMPORTANT: `ambIns` can have nil-UUID when it has been removed, so make sure we
+	//            have `return`ed by now.
+	r.BeginReporting("reconcile", ambIns.GetUID())
+
+	// Report beginning the reconciliation process to Metriton
+	r.ReportEvent("start_reconciliation")
+
 	// check if this is the first and only AmbassadorInstallation in this namespace
 	// if it is not, mark the status as Duplicate
 	isFirstAmbIns, err := r.isFirstAmbInst(ambIns)
