@@ -495,7 +495,7 @@ func (r *ReconcileAmbassadorInstallation) BeginReporting(mode string, installID 
 
 // ReportEvent sends an event to Metriton
 func (r *ReconcileAmbassadorInstallation) ReportEvent(eventName string, meta ...ScoutMeta) {
-	log.Info("[Metrics]", eventName)
+	log.Info("[Metrics]", "event", eventName)
 	if err := r.Scout.Report(eventName, meta...); err != nil {
 		log.Info("[Metrics]", "event", eventName, "error", err)
 	}
