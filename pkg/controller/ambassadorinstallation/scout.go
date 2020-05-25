@@ -4,8 +4,6 @@ package ambassadorinstallation
 
 import (
 	"context"
-	"os"
-
 	"k8s.io/apimachinery/pkg/types"
 
 	"github.com/datawire/ambassador-operator/version"
@@ -28,28 +26,6 @@ type Scout struct {
 type ScoutMeta struct {
 	Key   string
 	Value interface{}
-}
-
-// Function to get an installID, given a Reporter.  This is a standard
-// function form since we aren't allowed to add methods to an external type.
-// TODO: rewrite to sync better with other install_id use cases.
-func ThisInstallID(r *metriton.Reporter) (string, error) {
-	// Have cluster ID?
-	thisID := os.Getenv("AMBASSADOR_CLUSTER_ID")
-
-	// Have Scout ID?
-	if thisID == "" {
-		thisID = os.Getenv("AMBASSADOR_SCOUT_ID")
-	}
-
-	// No cluster or Scout ID?  Just create a null ID,
-	// and note the error in the BaseMetadata.
-	if thisID == "" {
-		thisID = "00000000-0000-0000-0000-000000000000"
-		r.BaseMetadata["install_id_error"] = "no cluster or scout ID"
-	}
-
-	return thisID, nil
 }
 
 // Create a new Scout object, with a parameter stating what the Scout instance
