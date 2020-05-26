@@ -38,7 +38,7 @@ jobs:
     - stage: End-to-end tests
       name: "e2e tests in Google Cloud (GKE)"
       if: type = cron OR tag IS present
-      env: CLUSTER_PROVIDER="gke" CLUSTER_REUSE=1
+      env: CLUSTER_PROVIDER="gke" CLUSTER_MACHINE="e2-standard-8" CLUSTER_REUSE=1
       script: make ci/cluster-setup ci/e2e
 
     - name: "e2e tests in Azure (AKS)"
