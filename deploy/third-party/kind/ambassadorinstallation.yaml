@@ -13,6 +13,8 @@ spec:
         operator: Equal
         effect: NoSchedule
     replicaCount: 1
+    deploymentStrategy:
+      type: Recreate
     nodeSelector:
       ingress-ready: "true"
     service:
