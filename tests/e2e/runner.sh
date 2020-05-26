@@ -150,6 +150,7 @@ check() {
 			passed "... environment created"
 		else
 			warn "failed to create environment: aborting..."
+			rc=1
 			break
 		fi
 
@@ -158,6 +159,7 @@ check() {
 			passed "... the registry seems fine"
 		else
 			warn "registry check failed: aborting..."
+			rc=1
 			break
 		fi
 
@@ -166,21 +168,32 @@ check() {
 			passed "... kubeconfig=$KUBECONFIG seem fine"
 		else
 			warn "kubeconfig $KUBECONFIG cluster check failed: aborting..."
+			rc=1
 			break
 		fi
 
 		# push the image and run the test script
-		image_push || return 1
+		if image_push; then
+			passed "... image pushed"
+		else
+			warn "could not push image: aborting..."
+			rc=1
+			break
+		fi
+
 		"$test_runner"
 		rc=$?
 
+		# destroy the environment, regardless of the result of $test_runner
 		info "Destroying environment..."
 		if env_destroy; then
 			passed "... environment destroyed"
 		else
 			warn "failed to destroy environment"
+			rc=1
 			break
 		fi
+
 		[ "$rc" -eq 0 ] || break
 	done
 
