@@ -80,8 +80,7 @@ type HelmValuesStrings map[string]string
 
 // HelmManager is a remote Helm repo or a file, provided with an URL
 type HelmManager struct {
-	mgr    manager.Manager
-	Values HelmValuesStrings
+	mgr manager.Manager
 	helm.HelmDownloader
 }
 
@@ -93,27 +92,26 @@ type HelmManagerOptions struct {
 // NewHelmManager creates a new charts manager
 // The Helm Manager will use the URL provided, and download (lazily) a Chart that
 // obeys the Version Rule.
-func NewHelmManager(options HelmManagerOptions, values HelmValuesStrings) (HelmManager, error) {
+func NewHelmManager(options HelmManagerOptions) (HelmManager, error) {
 	downloader, err := helm.NewHelmDownloader(options.HelmDownloaderOptions)
 	if err != nil {
 		return HelmManager{}, err
 	}
 	return HelmManager{
 		mgr:            options.Manager,
-		Values:         values,
 		HelmDownloader: downloader,
 	}, nil
 }
 
 // GetManagerFor returns a helm chart manager for the chart we have downloaded
-func (lc *HelmManager) GetManagerFor(o *unstructured.Unstructured) (release.Manager, error) {
+func (lc *HelmManager) GetManagerFor(o *unstructured.Unstructured, values HelmValuesStrings) (release.Manager, error) {
 	factory := release.NewManagerFactory(lc.mgr, lc.DownChartDir)
 
 	// create a copy of the object. we will use this one for creating the manager.
 	var oc unstructured.Unstructured
 	o.DeepCopyInto(&oc)
 
-	valuesStrings := lc.Values
+	valuesStrings := values
 
 	// hack for allowing any type in the helmValues:
 	// translate all the `.spec.helmValues.*` to `.spec.*`, so factory.NewManager

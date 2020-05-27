@@ -131,14 +131,6 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		return reconcile.Result{}, nil
 	}
 
-	// Reset the report index and initialize the Reporter.  No calls
-	// to r.ReportEvent, r.ReportError are allowed before this point.  ambIns
-	// must not be nil.
-	r.BeginReporting("reconcile", ambIns.GetUID())
-
-	// Report beginning the reconciliation process to Metriton
-	r.ReportEvent("start_reconciliation")
-
 	deleted := ambIns.GetDeletionTimestamp() != nil
 	pendingFinalizers := ambIns.GetFinalizers()
 
@@ -153,11 +145,16 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	status := ambassador.StatusFor(ambIns)
 	specHelmValues := GetHelmValuesAmbIns(ambIns) // values passes in the spec: just for reading
 
-	// check if this AmbassadorInstallation was marked as a Duplicate in the past
-	lastDuplicateCondition := status.LastCondition(ambassador.AmbInsCondition{Reason: ambassador.ReasonDuplicateError})
-	if lastDuplicateCondition.Reason == ambassador.ReasonDuplicateError {
-		reqLogger.Info("AmbassadorInstallation marked as duplicate: ignored")
-		return reconcile.Result{}, nil
+	// check if there are finalizers installed for this instance: if not, install our finalizer.
+	if !deleted && !contains(pendingFinalizers, defFinalizerID) {
+		log.V(1).Info("Adding finalizer", "ID", defFinalizerID)
+		finalizers := append(pendingFinalizers, defFinalizerID)
+		ambIns.SetFinalizers(finalizers)
+
+		err = r.Client.Update(context.TODO(), ambIns)
+
+		// Need to requeue because finalizer update does not change metadata.generation
+		return reconcile.Result{Requeue: true}, err
 	}
 
 	// Reset the report index and initialize the Reporter.
@@ -168,6 +165,56 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 
 	// Report beginning the reconciliation process to Metriton
 	r.ReportEvent("start_reconciliation")
+
+	// create a new parsed checker for versions
+	chartVersion, err := helm.NewChartVersionRule(spec.Version)
+	if err != nil {
+		message := fmt.Sprintf("could not parse version from %q", spec.Version)
+
+		// Report to Metriton
+		r.ReportError("fail_parse_chart_version", message, err)
+
+		status.SetCondition(ambassador.AmbInsCondition{
+			Type:    ambassador.ConditionReleaseFailed,
+			Status:  ambassador.StatusTrue,
+			Reason:  ambassador.ReasonParametersError,
+			Message: message,
+		})
+
+		// FIXME: this will return an error before reaching the `if delete...`, so it will make
+		//        impossible to delete an AmbassadorInstallation with a wrong Version
+		_ = r.updateResourceStatus(ambIns, status)
+		return reconcile.Result{}, err
+	}
+
+	options := HelmManagerOptions{
+		Manager: r.Manager,
+		HelmDownloaderOptions: helm.HelmDownloaderOptions{
+			URL:     spec.HelmRepo,
+			Version: chartVersion,
+		},
+	}
+	// create a new manager for the remote Helm repo URL
+	chartsMgr, err := NewHelmManager(options)
+	if err != nil {
+		return reconcile.Result{}, err
+	}
+
+	// check if this AmbassadorInstallation CR has been deleted.
+	// in that case, Ambassador should be removed.
+	// NOTE WELL: try to process the delete() ASAP, so errors do not prevent
+	//            the removal of the `AmbassasdorInstallation`
+	if deleted {
+		reqLogger.Info("AmbassadorInstallation deleted: uninstalling Ambassador")
+		return r.deleteRelease(ambIns, pendingFinalizers, chartsMgr)
+	}
+
+	// check if this AmbassadorInstallation was marked as a Duplicate in the past
+	lastDuplicateCondition := status.LastCondition(ambassador.AmbInsCondition{Reason: ambassador.ReasonDuplicateError})
+	if lastDuplicateCondition.Reason == ambassador.ReasonDuplicateError {
+		reqLogger.Info("AmbassadorInstallation marked as duplicate: ignored")
+		return reconcile.Result{}, nil
+	}
 
 	// check if this is the first and only AmbassadorInstallation in this namespace
 	// if it is not, mark the status as Duplicate
@@ -189,18 +236,6 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		})
 
 		return reconcile.Result{}, r.updateResourceStatus(ambIns, status)
-	}
-
-	// check if there are finalizers installed for this instance: if not, install our finalizer.
-	if !deleted && !contains(pendingFinalizers, defFinalizerID) {
-		log.V(1).Info("Adding finalizer", "ID", defFinalizerID)
-		finalizers := append(pendingFinalizers, defFinalizerID)
-		ambIns.SetFinalizers(finalizers)
-
-		err = r.Client.Update(context.TODO(), ambIns)
-
-		// Need to requeue because finalizer update does not change metadata.generation
-		return reconcile.Result{Requeue: true}, err
 	}
 
 	// Condition initialized
@@ -327,89 +362,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	} else {
 		if status.DeployedRelease != nil {
 			if status.DeployedRelease.Flavor != flavorAES {
-				log.Info("Upgrading the cluster from OSS to AES...")
-
-				// if AES is already installed, then we don't need to look for AuthService or RateLimitService
-				log.Info("Checking that AuthService/RateLimitService do not exist in the cluster.")
-
-				log.Info("Checking for AuthService...")
-				authServiceList, err := r.lookupResourceList(&schema.GroupVersionKind{
-					Group:   "getambassador.io",
-					Version: "v2",
-					Kind:    "AuthService",
-				}, request.Namespace)
-
-				if err != nil {
-					message := "could not look up AuthService in the cluster"
-					err = fmt.Errorf(message)
-					log.Error(err, "")
-
-					status.SetCondition(ambassador.AmbInsCondition{
-						Type:    ambassador.ConditionReleaseFailed,
-						Status:  ambassador.StatusTrue,
-						Reason:  ambassador.ReasonUpgradePrecondError,
-						Message: message,
-					})
-					_ = r.updateResourceStatus(ambIns, status)
-					r.ReportError("fail_no_authservice", message, err)
-					return reconcile.Result{RequeueAfter: r.checkInterval}, err
-				}
-
-				if len(authServiceList.Items) > 0 {
-					message := "AuthService(s) exist in the cluster, please remove to upgrade to AES"
-					err = fmt.Errorf(message)
-					log.Error(err, "")
-
-					status.SetCondition(ambassador.AmbInsCondition{
-						Type:    ambassador.ConditionReleaseFailed,
-						Status:  ambassador.StatusTrue,
-						Reason:  ambassador.ReasonUpgradePrecondError,
-						Message: message,
-					})
-					_ = r.updateResourceStatus(ambIns, status)
-					r.ReportError("fail_existing_authservice", message, err)
-					return reconcile.Result{RequeueAfter: r.checkInterval}, err
-				}
-
-				log.Info("Checking for RateLimitService...")
-				rateLimitServiceList, err := r.lookupResourceList(&schema.GroupVersionKind{
-					Group:   "getambassador.io",
-					Version: "v2",
-					Kind:    "RateLimitService",
-				}, request.Namespace)
-
-				if err != nil {
-					message := "could not look up RateLimitService in the cluster"
-					err = fmt.Errorf(message)
-					log.Error(err, "")
-
-					status.SetCondition(ambassador.AmbInsCondition{
-						Type:    ambassador.ConditionReleaseFailed,
-						Status:  ambassador.StatusTrue,
-						Reason:  ambassador.ReasonUpgradePrecondError,
-						Message: message,
-					})
-					_ = r.updateResourceStatus(ambIns, status)
-					r.ReportError("fail_no_ratelimitservice", message, err)
-					return reconcile.Result{RequeueAfter: r.checkInterval}, err
-				}
-
-				if len(rateLimitServiceList.Items) > 0 {
-					message := "RateLimitService(s) exist in the cluster, please remove to upgrade to AES"
-					err = fmt.Errorf(message)
-					log.Error(err, "")
-
-					status.SetCondition(ambassador.AmbInsCondition{
-						Type:    ambassador.ConditionReleaseFailed,
-						Status:  ambassador.StatusTrue,
-						Reason:  ambassador.ReasonUpgradePrecondError,
-						Message: message,
-					})
-					_ = r.updateResourceStatus(ambIns, status)
-					r.ReportError("fail_existing_ratelimitservice", message, err)
-					return reconcile.Result{RequeueAfter: r.checkInterval}, err
-				}
-
+				log.Info("Will try to migrate from OSS to AES...")
 				isMigrating = true
 			}
 		}
@@ -421,45 +374,6 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	if len(spec.LogLevel) > 0 {
 		reqLogger.Info("Using custom log level", "level", spec.LogLevel)
 		helmValuesStrings["pro.logLevel"] = spec.LogLevel
-	}
-
-	// create a new parsed checker for versions
-	chartVersion, err := helm.NewChartVersionRule(spec.Version)
-	if err != nil {
-		message := fmt.Sprintf("could not parse version from %q", spec.Version)
-
-		// Report to Metriton
-		r.ReportError("fail_parse_chart_version", message, err)
-
-		status.SetCondition(ambassador.AmbInsCondition{
-			Type:    ambassador.ConditionReleaseFailed,
-			Status:  ambassador.StatusTrue,
-			Reason:  ambassador.ReasonParametersError,
-			Message: message,
-		})
-
-		_ = r.updateResourceStatus(ambIns, status)
-		return reconcile.Result{}, err
-	}
-
-	options := HelmManagerOptions{
-		Manager: r.Manager,
-		HelmDownloaderOptions: helm.HelmDownloaderOptions{
-			URL:     spec.HelmRepo,
-			Version: chartVersion,
-		},
-	}
-	// create a new manager for the remote Helm repo URL
-	chartsMgr, err := NewHelmManager(options, helmValuesStrings)
-	if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// check if this AmbassadorInstallation CR has been deleted.
-	// in that case, Ambassador should be removed.
-	if deleted {
-		reqLogger.Info("AmbassadorInstallation deleted: uninstalling Ambassador")
-		return r.deleteRelease(ambIns, pendingFinalizers, chartsMgr)
 	}
 
 	// get an update window from the arguments in the CRD
@@ -485,7 +399,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	}
 
 	r.ReportEvent("completed_reconciliation")
-	return r.tryInstallOrUpdate(ambIns, chartsMgr, window, isMigrating, flavor)
+	return r.tryInstallOrUpdate(ambIns, chartsMgr, window, helmValuesStrings, isMigrating, flavor)
 }
 
 func (r *ReconcileAmbassadorInstallation) updateResource(o runtime.Object) error {

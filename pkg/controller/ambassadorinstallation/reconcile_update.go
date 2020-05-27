@@ -2,9 +2,11 @@ package ambassadorinstallation
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ambassador "github.com/datawire/ambassador-operator/pkg/apis/getambassador/v2"
@@ -33,7 +35,7 @@ const (
 
 // tryInstallOrUpdate checks if we need to update the Helm chart
 func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructured.Unstructured,
-	chartsMgr HelmManager, window UpdateWindow, isMigrating bool, flavor string) (reconcile.Result, error) {
+	chartsMgr HelmManager, window UpdateWindow, helmValues HelmValuesStrings, isMigrating bool, flavor string) (reconcile.Result, error) {
 	updateDeadline := time.Now().Add(defaultUpdateTimeout)
 	ctx, _ := context.WithDeadline(context.TODO(), updateDeadline)
 
@@ -63,6 +65,14 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 		}
 	}
 
+	// check that the migration can be done
+	if isMigrating {
+		res, err := r.canMigrate(ambObj)
+		if err != nil {
+			return res, err
+		}
+	}
+
 	if err := chartsMgr.Download(); err != nil {
 		// report to Metriton & log
 		r.ReportError("fail_release_download", "Failed to download latest release", err)
@@ -79,7 +89,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 	}
 	defer func() { _ = chartsMgr.Cleanup() }()
 
-	chart, err := chartsMgr.GetManagerFor(ambObj)
+	chart, err := chartsMgr.GetManagerFor(ambObj, helmValues)
 	defer func() { _ = chartsMgr.Cleanup() }()
 	if err != nil {
 		message := "when obtaining the chart manager"
@@ -108,11 +118,6 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 	if !chart.IsInstalled() {
 		log.Info("Ambassador is not currently installed: installing...",
 			"newVersion", chartsMgr.GetVersionRule().String())
-
-		for k, v := range chartsMgr.Values {
-			r.EventRecorder.Eventf(ambObj, "Warning", "OverrideValuesInUse",
-				"Chart value %q overridden to %q by Ambassador operator", k, v)
-		}
 
 		installedRelease, err := chart.InstallRelease(ctx)
 
@@ -178,11 +183,6 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 	if chart.IsUpdateRequired() {
 		log.Info("Ambassador is currently installed, but an upgrade is required",
 			"newVersion", chartsMgr.GetVersionRule().String())
-
-		for k, v := range chartsMgr.Values {
-			r.EventRecorder.Eventf(ambObj, "Warning", "OverrideValuesInUse",
-				"Chart value %q overridden to %q by Ambassador operator", k, v)
-		}
 
 		previousRelease, updatedRelease, err := chart.UpdateRelease(ctx)
 		if err != nil {
@@ -297,4 +297,89 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 
 	_ = r.updateResourceStatus(ambObj, status)
 	return reconcile.Result{RequeueAfter: r.checkInterval}, nil
+}
+
+// canMigrate verifies that the migration can be performed, returning an error otherwise
+func (r *ReconcileAmbassadorInstallation) canMigrate(ambIns *unstructured.Unstructured) (reconcile.Result, error) {
+	status := ambassador.StatusFor(ambIns)
+	namespace := ambIns.GetNamespace()
+
+	log.Info("Checking for AuthService...")
+	authServiceList, err := r.lookupResourceList(&schema.GroupVersionKind{
+		Group:   "getambassador.io",
+		Version: "v2",
+		Kind:    "AuthService",
+	}, namespace)
+
+	if err != nil {
+		message := "could not look up AuthService in the cluster"
+		err = fmt.Errorf(message)
+		log.Error(err, "")
+
+		status.SetCondition(ambassador.AmbInsCondition{
+			Type:    ambassador.ConditionReleaseFailed,
+			Status:  ambassador.StatusTrue,
+			Reason:  ambassador.ReasonUpgradePrecondError,
+			Message: message,
+		})
+		_ = r.updateResourceStatus(ambIns, status)
+		r.ReportError("fail_no_authservice", message, err)
+		return reconcile.Result{RequeueAfter: r.checkInterval}, err
+	}
+
+	if len(authServiceList.Items) > 0 {
+		message := "AuthService(s) exist in the cluster, please remove to upgrade to AES"
+		err = fmt.Errorf(message)
+		log.Error(err, "")
+
+		status.SetCondition(ambassador.AmbInsCondition{
+			Type:    ambassador.ConditionReleaseFailed,
+			Status:  ambassador.StatusTrue,
+			Reason:  ambassador.ReasonUpgradePrecondError,
+			Message: message,
+		})
+		_ = r.updateResourceStatus(ambIns, status)
+		r.ReportError("fail_existing_authservice", message, err)
+		return reconcile.Result{RequeueAfter: r.checkInterval}, err
+	}
+
+	log.Info("Checking for RateLimitService...")
+	rateLimitServiceList, err := r.lookupResourceList(&schema.GroupVersionKind{
+		Group:   "getambassador.io",
+		Version: "v2",
+		Kind:    "RateLimitService",
+	}, namespace)
+
+	if err != nil {
+		message := "could not look up RateLimitService in the cluster"
+		err = fmt.Errorf(message)
+		log.Error(err, "")
+
+		status.SetCondition(ambassador.AmbInsCondition{
+			Type:    ambassador.ConditionReleaseFailed,
+			Status:  ambassador.StatusTrue,
+			Reason:  ambassador.ReasonUpgradePrecondError,
+			Message: message,
+		})
+		_ = r.updateResourceStatus(ambIns, status)
+		r.ReportError("fail_no_ratelimitservice", message, err)
+		return reconcile.Result{RequeueAfter: r.checkInterval}, err
+	}
+
+	if len(rateLimitServiceList.Items) > 0 {
+		message := "RateLimitService(s) exist in the cluster, please remove to upgrade to AES"
+		err = fmt.Errorf(message)
+		log.Error(err, "")
+
+		status.SetCondition(ambassador.AmbInsCondition{
+			Type:    ambassador.ConditionReleaseFailed,
+			Status:  ambassador.StatusTrue,
+			Reason:  ambassador.ReasonUpgradePrecondError,
+			Message: message,
+		})
+		_ = r.updateResourceStatus(ambIns, status)
+		r.ReportError("fail_existing_ratelimitservice", message, err)
+		return reconcile.Result{RequeueAfter: r.checkInterval}, err
+	}
+	return reconcile.Result{}, nil
 }
