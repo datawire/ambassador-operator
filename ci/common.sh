@@ -1036,7 +1036,10 @@ oper_uninstall() {
 	[ -z "$DEV_REGISTRY" ] && abort "no DEV_REGISTRY defined"
 	[ -z "$KUBECONFIG" ] && abort "no KUBECONFIG defined"
 
-	amb_inst_delete -n "$namespace" || /bin/true
+	amb_inst_delete -n "$namespace" || {
+	    oper_logs_dump -n "$namespace"
+	    abort "could not remove AmbassadorInstallation in namespace $namespace"
+	}
 	sleep 5
 
 	info "Removing the operator"
@@ -1047,8 +1050,9 @@ oper_uninstall() {
 	kubectl delete -n "$namespace" $KUBECTL_DELETE_ARGS -f $CRDS
 
 	info "Removing namespace $namespace..."
-	kubectl delete namespace $KUBECTL_DELETE_ARGS "$namespace" || /bin/true
-	wait_namespace_missing "$namespace" || abort "$namespace still alive"
+	kubectl delete namespace $KUBECTL_DELETE_ARGS "$namespace" && \
+	    wait_namespace_missing "$namespace" || abort "namespace $namespace still present"
+
 	passed "... namespace $namespace removed."
 }
 
