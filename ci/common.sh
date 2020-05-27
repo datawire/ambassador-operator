@@ -111,7 +111,7 @@ wait_until() {
 	local start_time=$(timestamp)
 	info "Waiting for $@"
 	until timeout_from $start_time || eval "$@"; do
-		info "... still waiting"
+		info "... still waiting for condition"
 		sleep 1
 	done
 	! timeout_from $start_time
@@ -267,42 +267,30 @@ get_amb_addr() {
 	fi
 }
 
+check_amb_has_addr() {
+	test -n "$(get_amb_addr $@)"
+}
+
 # wait_amb_addr <KUBECTL_ARGS...>
 # wait untils Ambassador has an address
 wait_amb_addr() {
-	i=0
-	timeout=$DEF_WAIT_TIMEOUT
-	until [ -n "$(get_amb_addr $@)" ] || [ $i -ge $timeout ]; do
-		info "waiting for Ambassador to have an IP ($i secs elapsed)"
-		i=$((i + 1))
-		sleep 1
-	done
-
-	if [ $i -ge $timeout ]; then
+	wait_until check_amb_has_addr $@ || {
 		warn "Timeout waiting for Ambassador's IP. Current services:"
 		kubectl get services $@
-		warn "Ambassador did not get an IP after $timeout seconds"
+		warn "Ambassador IP address: $(get_amb_addr $@)"
 		return 1
-	fi
+	}
 }
 
 # wait_not_amb_addr <KUBECTL_ARGS...>
 # wait untils Ambassador does not have an address
 wait_not_amb_addr() {
-	i=0
-	timeout=$DEF_WAIT_TIMEOUT
-	until [ -z "$(get_amb_addr $@)" ] || [ $i -ge $timeout ]; do
-		info "waiting for Ambassador to have an IP ($i secs elapsed)"
-		i=$((i + 1))
-		sleep 1
-	done
-
-	if [ $i -ge $timeout ]; then
-		warn "Timeout waiting for Ambassador not not have an IP. Current services:"
+	wait_until "! check_amb_has_addr $@" || {
+		warn "Timeout waiting for Ambassador to NOT have an IP. Current services:"
 		kubectl get services $@
-		warn "Ambassador had an IP after $timeout seconds"
+		warn "Ambassador IP address: $(get_amb_addr $@)"
 		return 1
-	fi
+	}
 }
 
 # kubectl_apply_host
@@ -989,12 +977,14 @@ kube_check_resource_empty() {
 # amb_inst_delete <KUBECTL_ARGS...>
 # delete an `AmbassadorInstallation`
 amb_inst_delete() {
-	info "Removing the AmbassadorInstallation"
-	kubectl delete $@ --wait=true --ignore-not-found=true --timeout=60s \
-		ambassadorinstallations "${AMB_INSTALLATION_NAME}" ||
-		return 1
-	wait_missing "$@ ambassadorinstallations ${AMB_INSTALLATION_NAME}" || return 1
-	passed "... AmbassadorInstallation removed."
+	lst=$(kubectl get $@ ambassadorinstallations --no-headers -o custom-columns=":metadata.name")
+	info "Removing all the AmbassadorInstallations: $lst"
+	for k in $lst; do
+		kubectl delete $KUBECTL_DELETE_ARGS $@ ambassadorinstallations "$k" || return 1
+		wait_missing "$@ ambassadorinstallations $k" || return 1
+		passed "... AmbassadorInstallation $k removed."
+	done
+	info "Current list of AmbassadorInstallations: " && kubectl get $@ ambassadorinstallations
 }
 
 amb_inst_describe() {
@@ -1038,21 +1028,29 @@ oper_uninstall() {
 
 	amb_inst_delete -n "$namespace" || {
 		oper_logs_dump -n "$namespace"
-		abort "could not remove AmbassadorInstallation in namespace $namespace"
+		abort "could not remove AmbassadorInstallations in namespace $namespace"
 	}
-	sleep 5
+	info "AmbassadorInstallations:" && kubectl get ambassadorinstallations -n $namespace
 
-	info "Removing the operator"
+	info "Removing the operator..."
 	cat_setting_image "$TOP_DIR/deploy/operator.yaml" | kubectl delete $KUBECTL_DELETE_ARGS -n "$namespace" -f -
-	kubectl delete -n "$namespace" $KUBECTL_DELETE_ARGS -f "$TOP_DIR/deploy/role_binding.yaml"
-	kubectl delete -n "$namespace" $KUBECTL_DELETE_ARGS -f "$TOP_DIR/deploy/role.yaml"
-	kubectl delete -n "$namespace" $KUBECTL_DELETE_ARGS -f "$TOP_DIR/deploy/service_account.yaml"
-	kubectl delete -n "$namespace" $KUBECTL_DELETE_ARGS -f $CRDS
+	for f in $CRDS "$TOP_DIR/deploy/role_binding.yaml" "$TOP_DIR/deploy/role.yaml" "$TOP_DIR/deploy/service_account.yaml"; do
+		info "... removing $f"
+		kubectl delete -n "$namespace" $KUBECTL_DELETE_ARGS -f $f || {
+			oper_logs_dump -n "$namespace"
+			abort "could not delete $f"
+		}
+	done
 
+	# note: it is important have deleted all the AmbassadorInstallations at this point,
+	#       otherwise the removal of the namespace will fail
 	info "Removing namespace $namespace..."
-	kubectl delete namespace $KUBECTL_DELETE_ARGS "$namespace" &&
-		wait_namespace_missing "$namespace" || abort "namespace $namespace still present"
-
+	kubectl delete namespace $KUBECTL_DELETE_ARGS "$namespace" || abort "could not delete namespace $namespace"
+	wait_namespace_missing "$namespace" || {
+		oper_logs_dump -n "$namespace"
+		kubectl get all -n "$namespace"
+		abort "namespace $namespace still present"
+	}
 	passed "... namespace $namespace removed."
 }
 
@@ -1120,6 +1118,7 @@ oper_install_helm() {
 }
 
 oper_logs_dump() {
+	kubectl logs $@ deployment/"$AMB_OPER_DEPLOY" --previous
 	kubectl logs $@ deployment/"$AMB_OPER_DEPLOY"
 }
 

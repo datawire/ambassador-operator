@@ -113,7 +113,7 @@ amb_inst_check_success -n "$TEST_NAMESPACE" || {
 }
 
 info "Checking we can remove Ambassador when the AmbassadorInstallation is deleted"
-amb_inst_delete -n "$TEST_NAMESPACE" || failed "could not remove AmbassadorInstallation"
+amb_inst_delete -n "$TEST_NAMESPACE" || failed "could not remove AmbassadorInstallations"
 
 sleep 5
 
