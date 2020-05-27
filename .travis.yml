@@ -38,12 +38,17 @@ jobs:
     - stage: End-to-end tests
       name: "e2e tests in Google Cloud (GKE)"
       if: type = cron OR tag IS present
-      env: CLUSTER_PROVIDER="gke" CLUSTER_MACHINE="e2-standard-8" CLUSTER_REUSE=1
+      env:
+        - CLUSTER_PROVIDER="gke"
+        - CLUSTER_MACHINE="e2-standard-8"
+        - CLUSTER_REUSE=1
       script: make ci/cluster-setup ci/e2e
 
     - name: "e2e tests in Azure (AKS)"
       if: type = cron OR tag IS present
-      env: CLUSTER_PROVIDER="azure" CLUSTER_REUSE=1
+      env:
+        - CLUSTER_PROVIDER="azure"
+        - CLUSTER_REUSE=1
       script: make ci/cluster-setup ci/e2e
 
     - name: "e2e tests in a local (1 node) Kubernetes cluster (k3d)"
@@ -56,9 +61,6 @@ jobs:
       name: "Publish artifacts"
       env:
         - AMB_OPER_TAG="$TRAVIS_TAG"
-        - CLUSTER_REGISTRY="datawire"
-        - CLUSTER_PROVIDER="azure"
-        - AZ_RES_GRP="DefaultResourceGroup-EUS"
 
       # generate all the artifacts that will be published by the "deploy"
       before_deploy:
@@ -77,20 +79,41 @@ jobs:
           file_glob: true
           file: build/artifacts/*
           skip_cleanup: true
-        # publish docker images
+
+        # publish images to Docker.io
+        # NOTE: make sure DOCKER_USERNAME/DOCKER_PASSWORD have values for a bot
+        - provider: script
+          on:
+            all_branches: true
+          env:
+            - REL_REGISTRY="docker.io/datawire"
+          script: make ci/publish-image
+          skip_cleanup: true
+
+        # publish images to Quay.io
         # NOTE: make sure DOCKER_USERNAME/DOCKER_PASSWORD have values for a bot
         #       (from https://quay.io/repository/datawire/ambassador-operator?tab=settings)
         - provider: script
           on:
             all_branches: true
+          env:
+            - DOCKER_USERNAME="$QUAY_USERNAME"
+            - DOCKER_PASSWORD="$QUAY_PASSWORD"
+            - REL_REGISTRY="quay.io/datawire"
           script: make ci/publish-image
           skip_cleanup: true
+
         # publish the image to Azure
         - provider: script
           on:
             all_branches: true
+          env:
+            - CLUSTER_REGISTRY="datawire"
+            - CLUSTER_PROVIDER="azure"
+            - AZ_RES_GRP="DefaultResourceGroup-EUS"
           script: make ci/publish-image-cloud/azure
           skip_cleanup: true
+
         # publish helm chart
         # NOTE: needs AWS_ACCESS_KEY_ID, AWS_BUCKET and AWS_SECRET_ACCESS_KEY (from keybase)
         - provider: script
