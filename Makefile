@@ -146,6 +146,9 @@ lint-fix: ## Run golangci-lint automatically fix (development purpose only)
 lint: ## Run golangci-lint with all checks enabled in the ci
 	$(Q)$(TOP_DIR)/hack/tests/check-lint.sh ci
 
+update-cluster-providers:
+	@echo ">>> Updating to the latest version of the cluster-providers..."
+	git submodule update --remote --merge
 
 ##############################
 # Generate Artifacts         #
