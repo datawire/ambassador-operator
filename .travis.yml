@@ -28,12 +28,17 @@ install:
 
 jobs:
   include:
+    #####################################################
     # stage 1: lint, build and unit-tests
+    #####################################################
     - stage: Build, lint and unit tests
       name: "Build, lint and unit tests"
       script: make ci/check-format-gen ci/lint ci/build ci/test
 
+    #####################################################
     # stage 2: end-to-end tests in multiple clouds
+    #####################################################
+
     # see the ci/infra/providers/CREDENTIALS.md for details on the credentials
     - stage: End-to-end tests
       name: "e2e tests in Google Cloud (GKE)"
@@ -55,22 +60,21 @@ jobs:
       env: CLUSTER_PROVIDER="k3d"
       script: make ci/cluster-setup ci/e2e
 
+    #####################################################
     # stage 3: publish artifacts
+    #####################################################
     - stage: Publish artifacts
+      name: "Publish artifacts to GitHub"
       if: tag IS present
-      name: "Publish artifacts"
       env:
         - AMB_OPER_TAG="$TRAVIS_TAG"
-
-      # generate all the artifacts that will be published by the "deploy"
-      before_deploy:
-        - make ci/release
-        - make ci/cluster-setup
-
-      # ... and then publish those artifacts, docs, push images, etc.
       deploy:
+        - provider: script
+          on:
+            all_branches: true
+          script: make ci/release
         # publish YAMLs to GitHub releases
-        # make ci/release should have left everything in build/artifacts/*
+        # `make ci/release` should have left everything in build/artifacts/*
         - provider: releases
           on:
             all_branches: true
@@ -80,46 +84,63 @@ jobs:
           file: build/artifacts/*
           skip_cleanup: true
 
+    - name: "Publish image to Docker.io"
+      if: tag IS present
+      env:
+        - AMB_OPER_TAG="$TRAVIS_TAG"
+        - REL_REGISTRY="docker.io/datawire"
+      deploy:
         # publish images to Docker.io
         # NOTE: make sure DOCKER_USERNAME/DOCKER_PASSWORD have values for a bot
         - provider: script
           on:
             all_branches: true
-          env:
-            - REL_REGISTRY="docker.io/datawire"
-          script: make ci/publish-image
-          skip_cleanup: true
+          script: make ci/release ci/publish-image
 
+    - name: "Publish images to Quay.io"
+      if: tag IS present
+      env:
+        - AMB_OPER_TAG="$TRAVIS_TAG"
+        - DOCKER_USERNAME="$QUAY_USERNAME"
+        - DOCKER_PASSWORD="$QUAY_PASSWORD"
+        - REL_REGISTRY="quay.io/datawire"
+      deploy:
         # publish images to Quay.io
         # NOTE: make sure DOCKER_USERNAME/DOCKER_PASSWORD have values for a bot
         #       (from https://quay.io/repository/datawire/ambassador-operator?tab=settings)
         - provider: script
           on:
             all_branches: true
-          env:
-            - DOCKER_USERNAME="$QUAY_USERNAME"
-            - DOCKER_PASSWORD="$QUAY_PASSWORD"
-            - REL_REGISTRY="quay.io/datawire"
-          script: make ci/publish-image
-          skip_cleanup: true
+          script: make ci/release ci/publish-image
 
-        # publish the image to Azure
+    - name: "Publish images to Azure ACR"
+      if: tag IS present
+      env:
+        - AMB_OPER_TAG="$TRAVIS_TAG"
+        - CLUSTER_REGISTRY="datawire"
+        - CLUSTER_PROVIDER="azure"
+        - AZ_RES_GRP="DefaultResourceGroup-EUS"
+      deploy:
         - provider: script
           on:
             all_branches: true
           env:
-            - CLUSTER_REGISTRY="datawire"
-            - CLUSTER_PROVIDER="azure"
-            - AZ_RES_GRP="DefaultResourceGroup-EUS"
-          script: make ci/publish-image-cloud/azure
-          skip_cleanup: true
+          script: make ci/cluster-setup ci/release ci/publish-image-cloud/azure
 
+    - name: "Publish Helm Chart"
+      if: tag IS present
+      env:
+        - AMB_OPER_TAG="$TRAVIS_TAG"
+        - DOCKER_USERNAME="$QUAY_USERNAME"
+        - DOCKER_PASSWORD="$QUAY_PASSWORD"
+        - REL_REGISTRY="quay.io/datawire"
+      deploy:
         # publish helm chart
         # NOTE: needs AWS_ACCESS_KEY_ID, AWS_BUCKET and AWS_SECRET_ACCESS_KEY (from keybase)
         - provider: script
           on:
             all_branches: true
-          script: make ci/publish-chart
+          script: make ci/cluster-setup ci/publish-chart
 
 after_success:
   - make ci/after-success
