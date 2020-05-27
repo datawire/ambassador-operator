@@ -51,7 +51,7 @@ func (r *ReconcileAmbassadorInstallation) deleteRelease(o *unstructured.Unstruct
 	}
 	defer func() { _ = chartsMgr.Cleanup() }()
 
-	manager, err := chartsMgr.GetManagerFor(o)
+	manager, err := chartsMgr.GetManagerFor(o, HelmValuesStrings{})
 	defer func() { _ = chartsMgr.Cleanup() }()
 	if err != nil {
 		return reconcile.Result{}, err
