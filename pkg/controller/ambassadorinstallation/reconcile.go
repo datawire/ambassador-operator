@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/datawire/ambassador/pkg/helm"
-
 	rpb "helm.sh/helm/v3/pkg/release"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -16,6 +14,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"github.com/datawire/ambassador/pkg/helm"
 
 	ambassador "github.com/datawire/ambassador-operator/pkg/apis/getambassador/v2"
 )
