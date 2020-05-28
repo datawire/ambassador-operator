@@ -47,13 +47,22 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 	log.V(2).Info("Last condition",
 		"type", currCondition.Type, "reason", currCondition.Reason, "status", currCondition.Status)
 
+	// in general we will not check if we need to update until the next "update window"
+	// however, some exceptions will cause to ignore this time:
+	// 1) a migration from OSS to AES has been specified
+	// 2) the .spec has changed
+	ignoreTime := false
+	if isMigrating || hasChangedSpec(ambObj) {
+		ignoreTime = true
+	}
+
 	// when Ambassador is currently happily deployed, do not continue with this upgrade check if:
 	// 1. we did this check not so long ago...
 	// 2. this is not the right time (ie, not allowed by the update window)
 	// try to install/upgrade in any other case (ie, the initial installation, the deployment
 	// is in an error state, etc)
 	// We ignore this upgrade check when OSS to AES migration is set in AmbassadorInstallation
-	if (currCondition.Type == ambassador.ConditionDeployed) && !isMigrating {
+	if (currCondition.Type == ambassador.ConditionDeployed) && !ignoreTime {
 		if !status.LastCheckTime.Time.IsZero() && now.Sub(status.LastCheckTime.Time) < r.updateInterval {
 			log.Info("Last install/update was not so long ago", "updateInterval", r.updateInterval)
 			return reconcile.Result{RequeueAfter: r.checkInterval}, nil
@@ -65,7 +74,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 		}
 	}
 
-	// check that the migration can be done
+	// if we are supposed to migrate, check that the migration can be done (ie, no AuthService)
 	if isMigrating {
 		res, err := r.canMigrate(ambObj)
 		if err != nil {
@@ -304,43 +313,32 @@ func (r *ReconcileAmbassadorInstallation) canMigrate(ambIns *unstructured.Unstru
 	status := ambassador.StatusFor(ambIns)
 	namespace := ambIns.GetNamespace()
 
+	resultError := func(message string, event string) (reconcile.Result, error) {
+		err := fmt.Errorf(message)
+		log.Error(err, "")
+
+		status.SetCondition(ambassador.AmbInsCondition{
+			Type:    ambassador.ConditionReleaseFailed,
+			Status:  ambassador.StatusTrue,
+			Reason:  ambassador.ReasonUpgradePrecondError,
+			Message: message,
+		})
+		_ = r.updateResourceStatus(ambIns, status)
+		r.ReportError(event, message, err)
+		return reconcile.Result{RequeueAfter: r.checkInterval}, err
+	}
+
 	log.Info("Checking for AuthService...")
 	authServiceList, err := r.lookupResourceList(&schema.GroupVersionKind{
 		Group:   "getambassador.io",
 		Version: "v2",
 		Kind:    "AuthService",
 	}, namespace)
-
 	if err != nil {
-		message := "could not look up AuthService in the cluster"
-		err = fmt.Errorf(message)
-		log.Error(err, "")
-
-		status.SetCondition(ambassador.AmbInsCondition{
-			Type:    ambassador.ConditionReleaseFailed,
-			Status:  ambassador.StatusTrue,
-			Reason:  ambassador.ReasonUpgradePrecondError,
-			Message: message,
-		})
-		_ = r.updateResourceStatus(ambIns, status)
-		r.ReportError("fail_no_authservice", message, err)
-		return reconcile.Result{RequeueAfter: r.checkInterval}, err
+		return resultError("could not look up AuthService in the cluster", "fail_no_authservice")
 	}
-
 	if len(authServiceList.Items) > 0 {
-		message := "AuthService(s) exist in the cluster, please remove to upgrade to AES"
-		err = fmt.Errorf(message)
-		log.Error(err, "")
-
-		status.SetCondition(ambassador.AmbInsCondition{
-			Type:    ambassador.ConditionReleaseFailed,
-			Status:  ambassador.StatusTrue,
-			Reason:  ambassador.ReasonUpgradePrecondError,
-			Message: message,
-		})
-		_ = r.updateResourceStatus(ambIns, status)
-		r.ReportError("fail_existing_authservice", message, err)
-		return reconcile.Result{RequeueAfter: r.checkInterval}, err
+		return resultError("AuthService(s) exist in the cluster, please remove to upgrade to AES", "fail_existing_authservice")
 	}
 
 	log.Info("Checking for RateLimitService...")
@@ -349,37 +347,12 @@ func (r *ReconcileAmbassadorInstallation) canMigrate(ambIns *unstructured.Unstru
 		Version: "v2",
 		Kind:    "RateLimitService",
 	}, namespace)
-
 	if err != nil {
-		message := "could not look up RateLimitService in the cluster"
-		err = fmt.Errorf(message)
-		log.Error(err, "")
-
-		status.SetCondition(ambassador.AmbInsCondition{
-			Type:    ambassador.ConditionReleaseFailed,
-			Status:  ambassador.StatusTrue,
-			Reason:  ambassador.ReasonUpgradePrecondError,
-			Message: message,
-		})
-		_ = r.updateResourceStatus(ambIns, status)
-		r.ReportError("fail_no_ratelimitservice", message, err)
-		return reconcile.Result{RequeueAfter: r.checkInterval}, err
+		return resultError("could not look up RateLimitService in the cluster", "fail_no_ratelimitservice")
 	}
-
 	if len(rateLimitServiceList.Items) > 0 {
-		message := "RateLimitService(s) exist in the cluster, please remove to upgrade to AES"
-		err = fmt.Errorf(message)
-		log.Error(err, "")
-
-		status.SetCondition(ambassador.AmbInsCondition{
-			Type:    ambassador.ConditionReleaseFailed,
-			Status:  ambassador.StatusTrue,
-			Reason:  ambassador.ReasonUpgradePrecondError,
-			Message: message,
-		})
-		_ = r.updateResourceStatus(ambIns, status)
-		r.ReportError("fail_existing_ratelimitservice", message, err)
-		return reconcile.Result{RequeueAfter: r.checkInterval}, err
+		return resultError("RateLimitService(s) exist in the cluster, please remove to upgrade to AES", "fail_existing_ratelimitservice")
 	}
+
 	return reconcile.Result{}, nil
 }
