@@ -146,6 +146,20 @@ jobs:
             all_branches: true
           script: make ci/cluster-setup ci/publish-chart
 
+    #####################################################
+    # stage 5: smoke tests
+    #####################################################
+    - stage: Smoke tests
+      name: "Smoke tests for KIND"
+      if: tag IS present
+      env:
+        - AMB_OPER_TAG="$TRAVIS_TAG"
+      deploy:
+        - provider: script
+          on:
+            all_branches: true
+          script: make ci/smoke-tests/kind
+
 after_success:
   - make ci/after-success
 
