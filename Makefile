@@ -320,6 +320,11 @@ ci/all: ci/lint ci/build ci/test ci/e2e
 
 ci/release: release-collect-manifests gen-crds-docs
 
+ci/smoke-tests/kind:
+	tests/smoke-tests/kind.sh setup
+	tests/smoke-tests/kind.sh run
+	tests/smoke-tests/kind.sh cleanup
+
 ci/publish-image: image-push
 
 ci/publish-image-cloud: clean
