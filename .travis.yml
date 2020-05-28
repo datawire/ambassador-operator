@@ -61,7 +61,54 @@ jobs:
       script: make ci/cluster-setup ci/e2e
 
     #####################################################
-    # stage 3: publish artifacts
+    # stage 3: push images
+    #####################################################
+    - stage: Push images
+      name: "Push image to Docker.io"
+      if: tag IS present
+      env:
+        - AMB_OPER_TAG="$TRAVIS_TAG"
+        - REL_REGISTRY="docker.io/datawire"
+      deploy:
+        # publish images to Docker.io
+        # NOTE: make sure DOCKER_USERNAME/DOCKER_PASSWORD have values for a bot
+        - provider: script
+          on:
+            all_branches: true
+          script: make ci/release ci/publish-image
+
+    - name: "Push images to Quay.io"
+      if: tag IS present
+      env:
+        - AMB_OPER_TAG="$TRAVIS_TAG"
+        - DOCKER_USERNAME="$QUAY_USERNAME"
+        - DOCKER_PASSWORD="$QUAY_PASSWORD"
+        - REL_REGISTRY="quay.io/datawire"
+      deploy:
+        # publish images to Quay.io
+        # NOTE: make sure DOCKER_USERNAME/DOCKER_PASSWORD have values for a bot
+        #       (from https://quay.io/repository/datawire/ambassador-operator?tab=settings)
+        - provider: script
+          on:
+            all_branches: true
+          script: make ci/release ci/publish-image
+
+    - name: "Push images to Azure ACR"
+      if: tag IS present
+      env:
+        - AMB_OPER_TAG="$TRAVIS_TAG"
+        - CLUSTER_REGISTRY="datawire"
+        - CLUSTER_PROVIDER="azure"
+        - AZ_RES_GRP="DefaultResourceGroup-EUS"
+      deploy:
+        - provider: script
+          on:
+            all_branches: true
+          env:
+          script: make ci/cluster-setup ci/release ci/publish-image-cloud/azure
+
+    #####################################################
+    # stage 4: publish artifacts
     #####################################################
     - stage: Publish artifacts
       name: "Publish artifacts to GitHub"
@@ -83,49 +130,6 @@ jobs:
           file_glob: true
           file: build/artifacts/*
           skip_cleanup: true
-
-    - name: "Publish image to Docker.io"
-      if: tag IS present
-      env:
-        - AMB_OPER_TAG="$TRAVIS_TAG"
-        - REL_REGISTRY="docker.io/datawire"
-      deploy:
-        # publish images to Docker.io
-        # NOTE: make sure DOCKER_USERNAME/DOCKER_PASSWORD have values for a bot
-        - provider: script
-          on:
-            all_branches: true
-          script: make ci/release ci/publish-image
-
-    - name: "Publish images to Quay.io"
-      if: tag IS present
-      env:
-        - AMB_OPER_TAG="$TRAVIS_TAG"
-        - DOCKER_USERNAME="$QUAY_USERNAME"
-        - DOCKER_PASSWORD="$QUAY_PASSWORD"
-        - REL_REGISTRY="quay.io/datawire"
-      deploy:
-        # publish images to Quay.io
-        # NOTE: make sure DOCKER_USERNAME/DOCKER_PASSWORD have values for a bot
-        #       (from https://quay.io/repository/datawire/ambassador-operator?tab=settings)
-        - provider: script
-          on:
-            all_branches: true
-          script: make ci/release ci/publish-image
-
-    - name: "Publish images to Azure ACR"
-      if: tag IS present
-      env:
-        - AMB_OPER_TAG="$TRAVIS_TAG"
-        - CLUSTER_REGISTRY="datawire"
-        - CLUSTER_PROVIDER="azure"
-        - AZ_RES_GRP="DefaultResourceGroup-EUS"
-      deploy:
-        - provider: script
-          on:
-            all_branches: true
-          env:
-          script: make ci/cluster-setup ci/release ci/publish-image-cloud/azure
 
     - name: "Publish Helm Chart"
       if: tag IS present
