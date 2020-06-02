@@ -42,10 +42,16 @@ AMB_NAMESPACE="ambassador"
 AMB_DEPLOY="ambassador"
 
 # the name of the ambassador operator deployment
-AMB_OPER_DEPLOY="ambassador-operator"
+AMB_OPER_MANIF="${TOP_DIR}/build/artifacts/ambassador-operator.yaml"
+
+# default image in the manifest (will be replaced
+AMB_OPER_MANIF_DEF_IMAGE="ambassador-operator:dev"
 
 # the CRDs
-CRDS="$TOP_DIR/deploy/crds/getambassador.io_ambassadorinstallations_crd.yaml"
+AMB_OPER_CRDS="$TOP_DIR/deploy/crds/getambassador.io_ambassadorinstallations_crd.yaml"
+
+# the name of the ambassador operator deployment
+AMB_OPER_DEPLOY="ambassador-operator"
 
 # the default image name
 AMB_OPER_IMAGE_NAME="ambassador-operator"

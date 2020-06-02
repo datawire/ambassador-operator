@@ -55,6 +55,9 @@ build/ambassador-operator
 build/ambassador-operator-dev-linux-gnu
 build/artifacts
 
+deploy/helm/ambassador-operator/crds/*.yaml
+deploy/helm/ambassador-operator/templates/*_crds.yaml
+
 /*credentials*
 *.local
 

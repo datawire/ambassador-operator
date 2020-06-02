@@ -13,40 +13,42 @@ TOP_DIR              = $(shell pwd)
 
 EXE                  = $(TOP_DIR)/build/ambassador-operator
 
+# default kubeconfig (mostly for e2e tests)
 DEV_KUBECONFIG      ?= $$HOME/.kube/config
 
+# sources: repo and main file
 AMB_OPER_REPO        = github.com/datawire/ambassador-operator
 AMB_OPER_MAIN_PKG    = $(AMB_OPER_REPO)/cmd/manager
 
+# Git stuff
 GIT_VERSION          = $(shell git describe --dirty --tags --always)
 GIT_COMMIT           = $(shell git rev-parse HEAD)
 
+# the base name and tag for the operator image
 AMB_OPER_BASE_IMAGE ?= ambassador-operator
 AMB_OPER_TAG        ?= dev
 ifeq ($(AMB_OPER_TAG),)
 override AMB_OPER_TAG = $(GIT_VERSION)
 endif
 
+# the image name with tag but without registry (ie, "ambassador-operator:dev")
 AMB_OPER_IMAGE      ?= $(AMB_OPER_BASE_IMAGE):$(AMB_OPER_TAG)
 AMB_OPER_ARCHES     :="amd64"
+
+# release registry
+REL_REGISTRY         ?= docker.io/datawire
+export REL_REGISTRY
+
+# full image name (ie, "docker.io/datawire/ambassador-operator:v1.2.3")
+AMB_OPER_IMAGE_FULL   = $(REL_REGISTRY)/$(AMB_OPER_IMAGE)
 
 AMB_OPER_PKGS        = $(shell go list ./...)
 AMB_OPER_SRCS        = $(shell find . -name '*.go' ! -path './ci/cluster-providers/*')
 AMB_OPER_SHS         = $(shell find . -name '*.sh' ! -path './ci/cluster-providers/*')
 
-# manifests that must be loaded (order matters)
+# namespace for tests, loads, etc...
 AMB_NS               = "ambassador"
-AMB_NS_MANIF         = $(TOP_DIR)/deploy/namespace.yaml
 
-AMB_DEPLOY_MANIF     = $(TOP_DIR)/deploy/service_account.yaml \
-                       $(TOP_DIR)/deploy/role.yaml \
-                       $(TOP_DIR)/deploy/role_binding.yaml \
-                       $(TOP_DIR)/deploy/operator.yaml
-
-AMB_OPER_MANIF       = $(AMB_NS_MANIF) \
-                       $(AMB_DEPLOY_MANIF)
-
-AMB_COVERAGE_FILE   := coverage.txt
 
 # directory where release artifacts go
 ARTIFACTS_DIR       ?= $(TOP_DIR)/build/artifacts
@@ -62,10 +64,6 @@ HELM_OPER_MANIF      = $(HELM_DIR)/templates/ambassador-operator.yaml
 
 IMAGE_EXTRA_FILE         ?=
 IMAGE_EXTRA_FILE_CONTENT ?=
-
-REL_REGISTRY        ?= docker.io/datawire
-REL_AMB_OPER_IMAGE   = $(REL_REGISTRY)/$(AMB_OPER_IMAGE)
-export REL_REGISTRY
 
 # directory for docs
 DOCS_API_DIR         := docs/api
@@ -84,6 +82,9 @@ export CLUSTER_PROVIDER
 
 CLUSTER_PROVIDERS   ?= $(shell realpath ./ci/cluster-providers)
 export CLUSTER_PROVIDERS
+
+# tests
+AMB_COVERAGE_FILE   := coverage.txt
 
 # the repo used for generating the API docs
 GEN_CRD_API_REPO =  github.com/inercia/gen-crd-api-reference-docs
@@ -135,7 +136,7 @@ clean: ## Clean up the build artifacts
 		build/_output \
 		$(ARTIFACTS_DIR)
 	$(Q)docker rmi $(AMB_OPER_IMAGE) >/dev/null 2>&1 || /bin/true
-	$(Q)docker rmi $(REL_AMB_OPER_IMAGE) >/dev/null 2>&1 || /bin/true
+	$(Q)docker rmi $(AMB_OPER_IMAGE_FULL) >/dev/null 2>&1 || /bin/true
 
 lint-dev:  ## Run golangci-lint with all checks enabled (development purpose only)
 	$(Q)$(TOP_DIR)/hack/tests/check-lint.sh dev
@@ -199,19 +200,10 @@ release_builds := \
 
 # collect all the final manifests that should be part of a release.
 # can be invoked with a different registry in "REL_REGISTRY"
-release-collect-manifests: $(ARTIFACTS_DIR) gen-crds
-	$(Q)$(TOP_DIR)/ci/create_manifests.sh $(REL_AMB_OPER_IMAGE) $(ARTIFACTS_DIR) $(AMB_OPER_MANIF)
+collect-manifests: $(ARTIFACTS_DIR) gen-crds
+	$(Q)$(TOP_DIR)/ci/create_manifests.sh $(AMB_OPER_IMAGE) $(ARTIFACTS_DIR)
 
-release-manifests-helm:
-	@echo "Cleaning $(HELM_DIR)/templates/"
-	$(Q)rm -rf $(HELM_DIR)/templates/*
-
-	@echo ">>> Preparing release manifests in $(ARTIFACTS_DIR)"
-	$(Q)cat deploy/crds/*_crd.yaml > $(HELM_CRDS_MANIF)
-	$(Q)cat $(AMB_DEPLOY_MANIF) | sed -e "s|REPLACE_IMAGE|$(REL_AMB_OPER_IMAGE)|g" > $(HELM_OPER_MANIF)
-	@echo -n ">>> Files generated: " && ls $(HELM_DIR)/templates/
-
-release-manifests: release-collect-manifests
+release-manifests: collect-manifests
 
 release: clean release-manifests $(release_builds) ## Release the Ambassador Operator
 
@@ -245,12 +237,12 @@ image-build: $(EXE) ## Build images
 		fi
 
 image-push: image-build ## Push images to the registry
-	$(Q)$(TOP_DIR)/hack/image/push-image-tags.sh $(AMB_OPER_IMAGE) $(REL_AMB_OPER_IMAGE)
+	$(Q)$(TOP_DIR)/hack/image/push-image-tags.sh $(AMB_OPER_IMAGE) $(AMB_OPER_IMAGE_FULL)
 
 chart-push: ## Push the Helm chart (will need some AWS env vars)
-	@echo ">>> Preparing Helm chart values with image=$(REL_AMB_OPER_IMAGE)"
+	@echo ">>> Preparing Helm chart values with image=$(AMB_OPER_IMAGE_FULL)"
 	$(Q)mv $(AMB_OPER_CHART_VALS) $(AMB_OPER_CHART_VALS).bak
-	$(Q)cat $(AMB_OPER_CHART_VALS).bak | sed -e "s|ambassador-operator:dev|$(REL_AMB_OPER_IMAGE)|g" > $(AMB_OPER_CHART_VALS)
+	$(Q)cat $(AMB_OPER_CHART_VALS).bak | sed -e "s|ambassador-operator:dev|$(AMB_OPER_IMAGE_FULL)|g" > $(AMB_OPER_CHART_VALS)
 	@echo ">>> ... new values:"
 	$(Q)cat $(AMB_OPER_CHART_VALS)
 	@echo ""
@@ -271,8 +263,12 @@ $(AMB_COVERAGE_FILE): test
 
 e2e: ## Run the e2e tests -- VERBOSE=1, TEST=<some-test.sh>, CLUSTER_KEEP=1
 	@echo ">>> Running e2e tests"
-	$(Q)AMB_OPER_IMAGE=$(AMB_OPER_IMAGE) $(TOP_DIR)/tests/e2e/runner.sh \
-		--image-name=$(AMB_OPER_BASE_IMAGE) --image-tag=$(AMB_OPER_TAG) check $(TEST)
+	$(Q)AMB_OPER_IMAGE=$(AMB_OPER_IMAGE) make collect-manifests
+	$(Q)AMB_OPER_IMAGE=$(AMB_OPER_IMAGE) \
+		$(TOP_DIR)/tests/e2e/runner.sh \
+			--image-name=$(AMB_OPER_BASE_IMAGE) \
+			--image-tag=$(AMB_OPER_TAG) \
+			check $(TEST)
 
 ##############################
 # Utils                      #
@@ -284,12 +280,12 @@ create-namespace:
 	@echo ">>> Creating namespace $(AMB_NS)"
 	$(Q)kubectl create namespace $(AMB_NS) 2>/dev/null || /bin/true
 
-load-crds: create-namespace release-collect-manifests  ## Load the CRDs in the current cluster
+load-crds: create-namespace collect-manifests  ## Load the CRDs in the current cluster
 	@echo ">>> Loading CRDs"
 	$(Q)[ -n $KUBECONFIG ] || echo "WARNING: no KUBECONFIG defined: using default kubeconfig"
 	$(Q)kubectl apply -n $(AMB_NS) -f $(ARTIFACT_CRDS_MANIF)
 
-load: create-namespace release-collect-manifests load-crds   ## Load the CRDs and manifests in the current cluster
+load: create-namespace collect-manifests load-crds   ## Load the CRDs and manifests in the current cluster
 	@echo ">>> Loading manifests (with REPLACE_IMAGE=$(AMB_OPER_IMAGE))"
 	$(Q)[ -n $KUBECONFIG ] || echo "WARNING: no KUBECONFIG defined: using default kubeconfig"
 	$(Q)kubectl apply -n $(AMB_NS) -f $(ARTIFACT_OPER_MANIF)
@@ -318,7 +314,8 @@ ci/e2e: e2e
 
 ci/all: ci/lint ci/build ci/test ci/e2e
 
-ci/release: release-collect-manifests gen-crds-docs
+ci/release:
+	$(Q)AMB_OPER_IMAGE=$(AMB_OPER_IMAGE_FULL) make collect-manifests gen-crds-docs
 
 ci/smoke-tests/kind:
 	tests/smoke-tests/kind.sh setup
