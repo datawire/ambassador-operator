@@ -35,7 +35,8 @@ oper_wait_install -n "$TEST_NAMESPACE" || failed "the Ambassador operator is not
 
 info "Checking the static Helm values..."
 oper_check_file_contains /tmp/helm/values.yaml "deploymentTool.*$EXPECTED_MANAGED_BY" -n "$TEST_NAMESPACE" || {
-	failed "no 'deploymentTool' with '$EXPECTED_MANAGED_BY' found in Helm static values file"
+	kubectl get -n "$TEST_NAMESPACE" deployment "$AMB_OPER_DEPLOY" -o yaml
+	abort "no 'deploymentTool' with '$EXPECTED_MANAGED_BY' found in Helm static values file"
 }
 passed "... good! /tmp/helm/values.yaml contains deploymentTool = $EXPECTED_MANAGED_BY"
 

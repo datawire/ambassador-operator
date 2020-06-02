@@ -63,8 +63,29 @@ jobs:
     #####################################################
     # stage 3: push images
     #####################################################
-    - stage: Push images
-      name: "Push image to Docker.io"
+    - stage: Publish artifacts
+      name: "Publish artifacts to GitHub"
+      if: tag IS present
+      env:
+        - AMB_OPER_TAG="$TRAVIS_TAG"
+        - REL_REGISTRY="docker.io/datawire"
+      deploy:
+        - provider: script
+          on:
+            all_branches: true
+          script: make ci/release
+        # publish YAMLs to GitHub releases
+        # `make ci/release` should have left everything in build/artifacts/*
+        - provider: releases
+          on:
+            branch: master
+          api_key:
+            secure: XFAZ+q3B7TL7ae0lK6Nl4RCkYxknZ0gZ44g/aR5zOcTkAuJ9049vOUol7UQT9ZyRMMOigfma5IQRFqcQlHBPnBRGkuHFGqxx48Kw1pvLRR3BhIYG0aSyDR3ZnI0eEkaKzui1zKBC5R03DK1NpVl+muomNDWgsEb9M9qn7onYQPMfCi4ZZ8x/ev5GtXlHPrCh4O/m51X0nLoVMsvFaogNiiwKtS/sWlLTiY9DWwACF5yY58Q65l3GNiLaIQCIvdU3losq08KJViIE8qBNojCRr+zLXluOlpgVb7ozZ3vWNephuHZoRIvW8hH8MTgaiuDh+XGlbTNlLBrJAF43CPZLQdzZdLMp74XRx90OkXHA8p6crBoQRa5Q7/MhV0pswdMcSKnHIe9dRkkPiGmDGXFg5WAchI6egGskAD4SAZMmiXBoj8TcjtyDa4NExakebrrU/XzvU951teAk2czNs1yoXTDfrpgDiIfI7PaIXgUGJi8VjkuwgSZ8uU1EQNwrvhikngbtFKnzM7I2KGr3nIE9cTxxo81PWoElrGAarArQZjARJp1z2myTqPiUi3FcvFOmaeOZbTvHc2kt2Z5iZCJ4Np/YwmXL7pCjijxbb8MB6MrQLv96woX0do/lDDsq8tXrRRoxGqpRzvBtLWHVMw55aKrbnvfnic1HGwyMZnFex+E=
+          file_glob: true
+          file: build/artifacts/*
+          skip_cleanup: true
+
+    - name: "Publish image to Docker.io"
       if: tag IS present
       env:
         - AMB_OPER_TAG="$TRAVIS_TAG"
@@ -90,7 +111,7 @@ jobs:
         #       (from https://quay.io/repository/datawire/ambassador-operator?tab=settings)
         - provider: script
           on:
-            all_branches: true
+            branch: master
           script: make ci/release ci/publish-image
 
     - name: "Push images to Azure ACR"
@@ -103,7 +124,7 @@ jobs:
       deploy:
         - provider: script
           on:
-            all_branches: true
+            branch: master
           env:
           script: make ci/cluster-setup ci/release ci/publish-image-cloud/azure
 
@@ -143,7 +164,7 @@ jobs:
         # NOTE: needs AWS_ACCESS_KEY_ID, AWS_BUCKET and AWS_SECRET_ACCESS_KEY (from keybase)
         - provider: script
           on:
-            all_branches: true
+            branch: master
           script: make ci/cluster-setup ci/publish-chart
 
     #####################################################

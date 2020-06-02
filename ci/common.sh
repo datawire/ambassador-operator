@@ -1005,17 +1005,24 @@ amb_inst_check_uninstalled() {
 # Operator
 ########################################################################################################################
 
+# 'cat' a manifest, replacing the default image (ie, ambassador-operator:dev)
+# by the full image name (ie, docker.io/datawire/ambassador-operator:v1.2.3)
 get_full_image_name() {
 	if [ -n "$OPERATOR_IMAGE" ]; then
 		echo "$OPERATOR_IMAGE"
-	else
+	elif [ -n "$DEV_REGISTRY" ]; then
 		echo "$DEV_REGISTRY/$AMB_OPER_IMAGE_NAME:$AMB_OPER_IMAGE_TAG"
+	else
+		echo "$AMB_OPER_IMAGE_NAME:$AMB_OPER_IMAGE_TAG"
 	fi
 }
 
+# 'cat' a manifest, replacing the default image (ie, ambassador-operator:dev)
+# by the full image name (ie, docker.io/datawire/ambassador-operator:v1.2.3)
 cat_setting_image() {
 	local full_image=$(get_full_image_name)
-	cat "$1" | sed -e "s|REPLACE_IMAGE|'$full_image'|g"
+	info "(replacing image ${AMB_OPER_MANIF_DEF_IMAGE} by ${full_image})"
+	cat "$1" | sed -e "s|$AMB_OPER_MANIF_DEF_IMAGE|$full_image|g"
 }
 
 # oper_uninstall <NS>
@@ -1033,8 +1040,8 @@ oper_uninstall() {
 	}
 
 	info "Removing the operator..."
-	cat_setting_image "$TOP_DIR/deploy/operator.yaml" | kubectl delete $KUBECTL_DELETE_ARGS -n "$namespace" -f -
-	for f in $CRDS "$TOP_DIR/deploy/role_binding.yaml" "$TOP_DIR/deploy/role.yaml" "$TOP_DIR/deploy/service_account.yaml"; do
+	cat_setting_image "$AMB_OPER_MANIF" | kubectl delete $KUBECTL_DELETE_ARGS -n "$namespace" -f -
+	for f in $AMB_OPER_CRDS "$AMB_OPER_MANIF"; do
 		info "... removing $f"
 		kubectl delete -n "$namespace" $KUBECTL_DELETE_ARGS -f $f || {
 			oper_logs_dump -n "$namespace"
@@ -1086,7 +1093,11 @@ oper_install() {
 		exit 1
 		;;
 	esac
-	wait_deploy $AMB_OPER_DEPLOY -n "$namespace" || return 1
+	info "Waiting for the Operator deployment..."
+	wait_deploy $AMB_OPER_DEPLOY -n "$namespace" || {
+		oper_describe
+		return 1
+	}
 
 	info "Reducing check/update frequency update=$AMB_OPER_UPDATE_INTERVAL/check=$AMB_OPER_CHECK_INTERVAL..."
 	kubectl set env -n "$namespace" deployments "$AMB_OPER_DEPLOY" AMB_UPDATE_INTERVAL="$AMB_OPER_UPDATE_INTERVAL"
@@ -1100,12 +1111,10 @@ oper_install_yaml() {
 	local namespace="$1"
 	shift
 
-	kubectl apply $KUBECTL_APPLY_ARGS -f $CRDS
-	kubectl apply -n "$namespace" $KUBECTL_APPLY_ARGS -f "$TOP_DIR/deploy/service_account.yaml"
-	kubectl apply -n "$namespace" $KUBECTL_APPLY_ARGS -f "$TOP_DIR/deploy/role.yaml"
-	kubectl apply -n "$namespace" $KUBECTL_APPLY_ARGS -f "$TOP_DIR/deploy/role_binding.yaml"
+	kubectl apply $KUBECTL_APPLY_ARGS -f $AMB_OPER_CRDS
+	kubectl apply -n "$namespace" $KUBECTL_APPLY_ARGS -f "$AMB_OPER_MANIF"
 
-	cat_setting_image "$TOP_DIR/deploy/operator.yaml" |
+	cat_setting_image "$AMB_OPER_MANIF" |
 		sed -e "s/namespace: ambassador/namespace: $namespace/g" |
 		kubectl apply -n "$namespace" $KUBECTL_APPLY_ARGS -f -
 }

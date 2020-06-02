@@ -87,7 +87,7 @@ env_create() {
 	info "... DEV_KUBECONFIG=$DEV_KUBECONFIG"
 	info "... DEV_REGISTRY=$DEV_REGISTRY"
 	info "... DOCKER_NETWORK=$DOCKER_NETWORK"
-	info "... OPERATOR_IMAGE=$(get_full_image_name)"
+	info "... AMB_OPER_IMAGE=$(get_full_image_name)"
 	info "... CLUSTER_NAME=$CLUSTER_NAME"
 	info "... CLUSTER_SIZE=$CLUSTER_SIZE"
 	info "... CLUSTER_MACHINE=$CLUSTER_MACHINE"

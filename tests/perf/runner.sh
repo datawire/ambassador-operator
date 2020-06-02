@@ -381,7 +381,7 @@ get_env() {
 	info "... DEV_KUBECONFIG=$DEV_KUBECONFIG"
 	info "... DEV_REGISTRY=$DEV_REGISTRY"
 	info "... DOCKER_NETWORK=$DOCKER_NETWORK"
-	info "... OPERATOR_IMAGE=$(get_full_image_name)"
+	info "... AMB_OPER_IMAGE=$(get_full_image_name)"
 	info "... CLUSTER_NAME=$CLUSTER_NAME"
 	info "... CLUSTER_SIZE=$CLUSTER_SIZE"
 	info "... CLUSTER_MACHINE=$CLUSTER_MACHINE"
@@ -468,7 +468,7 @@ run() {
 	info "... DEV_KUBECONFIG=$DEV_KUBECONFIG"
 	info "... DEV_REGISTRY=$DEV_REGISTRY"
 	info "... DOCKER_NETWORK=$DOCKER_NETWORK"
-	info "... OPERATOR_IMAGE=$(get_full_image_name)"
+	info "... AMB_OPER_IMAGE=$(get_full_image_name)"
 
 	export KUBECONFIG DEV_KUBECONFIG DEV_REGISTRY DOCKER_NETWORK
 }
@@ -788,7 +788,7 @@ else
 		echo "export DEV_KUBECONFIG=$DEV_KUBECONFIG"
 		echo "export DEV_REGISTRY=$DEV_REGISTRY"
 		echo "export DOCKER_NETWORK=$DOCKER_NETWORK"
-		echo "export OPERATOR_IMAGE=$(get_full_image_name)"
+		echo "export AMB_OPER_IMAGE=$(get_full_image_name)"
 		echo "export CLUSTER_NAME=$CLUSTER_NAME"
 		echo "export CLUSTER_SIZE=$CLUSTER_SIZE"
 		echo "export CLUSTER_MACHINE=$CLUSTER_MACHINE"

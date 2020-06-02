@@ -178,7 +178,11 @@ metadata:
     getambassador.io/installer: operator
 data:
   values.yaml: |+
+    {{- if .Values.deploymentTool }}
+    deploymentTool: {{ .Values.deploymentTool }}
+    {{- else }}
     deploymentTool: amb-oper-helm
+    {{- end }}
 ---
 apiVersion: apps/v1
 kind: Deployment
