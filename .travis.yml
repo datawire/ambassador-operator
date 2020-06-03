@@ -15,6 +15,7 @@ env:
     - GO111MODULE=on
     - GO15VENDOREXPERIMENT=1
     - PUSH_CHART="true"
+    - CHANGE_MINIKUBE_NONE_USER=true
 
 cache:
   directories:
@@ -133,6 +134,8 @@ jobs:
       env:
         - AMB_OPER_IMAGE_TAG="$TRAVIS_TAG"
       deploy:
+        - provider: script
+          script: make ci/smoke-tests/minikube
         - provider: script
           on:
             all_branches: true
