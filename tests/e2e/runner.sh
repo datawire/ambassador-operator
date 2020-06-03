@@ -53,8 +53,8 @@ image_build() {
 }
 
 image_push() {
-	local full_image=$(get_full_image_name)
-	info "Pushing $AMB_OPER_IMAGE_NAME:$AMB_OPER_IMAGE_TAG -> $full_image"
+	local full_image=$(get_full_image_name dev)
+	info "Pushing image $AMB_OPER_IMAGE_NAME:$AMB_OPER_IMAGE_TAG -> $full_image for running e2e tests"
 	docker tag "$AMB_OPER_IMAGE_NAME:$AMB_OPER_IMAGE_TAG" "$full_image"
 	docker push "$full_image"
 }
@@ -87,7 +87,7 @@ env_create() {
 	info "... DEV_KUBECONFIG=$DEV_KUBECONFIG"
 	info "... DEV_REGISTRY=$DEV_REGISTRY"
 	info "... DOCKER_NETWORK=$DOCKER_NETWORK"
-	info "... AMB_OPER_IMAGE=$(get_full_image_name)"
+	info "... AMB_OPER_IMAGE_FULL=$(get_full_image_name dev)"
 	info "... CLUSTER_NAME=$CLUSTER_NAME"
 	info "... CLUSTER_SIZE=$CLUSTER_SIZE"
 	info "... CLUSTER_MACHINE=$CLUSTER_MACHINE"
@@ -197,7 +197,11 @@ check() {
 		[ "$rc" -eq 0 ] || break
 	done
 
-	[ -n "$KEEP" ] || cluster_provider 'cleanup'
+	[ -n "$KEEP" ] || {
+		env_destroy 2>/dev/null
+		cluster_provider 'cleanup'
+	}
+
 	return $rc
 }
 

@@ -12,20 +12,35 @@ source "$CURR_DIR/common.sh"
 
 #########################################################################################
 
+HELM_DIR="$TOP_DIR/deploy/helm/ambassador-operator"
+
+HELM_CHART_YAML="$HELM_DIR/Chart.yaml"
+
+HELM_REPO="https://getambassador.io/helm/"
+HELM_REPO_INDEX="https://getambassador.io/helm/index.yaml"
+
+#########################################################################################
+
 if [ -z "$TRAVIS_TAG" ]; then
 	info "No TRAVIS_TAG in environment: no Helm package will be built..."
 	exit 0
 fi
 
+info "Setting appVersion:"
+sed -i -e "s/^appVersion:.*/appVersion: $TRAVIS_TAG/g" "$HELM_CHART_YAML"
+grep appVersion "$HELM_CHART_YAML"
+
 info "Pushing Helm Chart"
-helm package $TOP_DIR/deploy/helm/ambassador-operator/
+helm package $HELM_DIR/
 
 # Get name of package
 export CHART_PACKAGE=$(ls *.tgz)
 
-curl -o tmp.yaml -k -L https://getambassador.io/helm/index.yaml
+info "Getting current index"
+curl -o tmp.yaml -k -L "$HELM_REPO_INDEX" || abort "could not merge with download index"
 
-helm repo index . --url https://getambassador.io/helm --merge tmp.yaml
+info "Adding to index..."
+helm repo index . --url "$HELM_REPO" --merge tmp.yaml || abort "could not merge with current index"
 
 [ -n "$AWS_ACCESS_KEY_ID" ] || abort "AWS_ACCESS_KEY_ID is not set"
 [ -n "$AWS_SECRET_ACCESS_KEY" ] || abort "AWS_SECRET_ACCESS_KEY is not set"

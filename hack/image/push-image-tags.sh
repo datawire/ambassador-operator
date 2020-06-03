@@ -33,20 +33,23 @@ function push_image_tags() {
 
 	local latest_image=""
 
-	info "Tagging $source_image -> $push_image..."
+	info "Will push to $push_image"
+
+	info "Tagging $source_image -> $push_image"
 	docker tag "$source_image" "$push_image"
 	if is_latest_tag "$(get_image_tag $push_image)"; then
 		latest_image="$(get_image_server_and_path $push_image)/$(get_image_name $push_image):latest"
-		info "Tagging $source_image -> $latest_image..."
+		info "Tagging $source_image -> $latest_image [LATEST]"
 		docker tag "$source_image" "$latest_image"
 	fi
 
 	if check_can_push; then
 		info "Pushing $source_image -> $push_image..."
 		docker push "$push_image"
-		if is_latest_tag "$(get_image_tag $push_image)"; then
+
+		if [ -n "$latest_image"]; then
 			info "Pushing $source_image -> $latest_image"
-			docker push "$push_image"
+			docker push "$latest_image"
 		fi
 	else
 		info "(push skipped)"

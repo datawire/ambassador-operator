@@ -25,22 +25,27 @@ GIT_VERSION          = $(shell git describe --dirty --tags --always)
 GIT_COMMIT           = $(shell git rev-parse HEAD)
 
 # the base name and tag for the operator image
-AMB_OPER_BASE_IMAGE ?= ambassador-operator
-AMB_OPER_TAG        ?= dev
-ifeq ($(AMB_OPER_TAG),)
-override AMB_OPER_TAG = $(GIT_VERSION)
+AMB_OPER_IMAGE_NAME ?= ambassador-operator
+AMB_OPER_IMAGE_TAG  ?= dev
+ifeq ($(AMB_OPER_IMAGE_TAG),)
+override AMB_OPER_IMAGE_TAG = $(GIT_VERSION)
 endif
 
 # the image name with tag but without registry (ie, "ambassador-operator:dev")
-AMB_OPER_IMAGE      ?= $(AMB_OPER_BASE_IMAGE):$(AMB_OPER_TAG)
+AMB_OPER_IMAGE      ?= $(AMB_OPER_IMAGE_NAME):$(AMB_OPER_IMAGE_TAG)
 AMB_OPER_ARCHES     :="amd64"
 
 # release registry
-REL_REGISTRY         ?= docker.io/datawire
-export REL_REGISTRY
+# this registry should be used only for pushing images for release
+REL_REGISTRY         ?=
 
 # full image name (ie, "docker.io/datawire/ambassador-operator:v1.2.3")
+ifeq ($(REL_REGISTRY),)
+AMB_OPER_IMAGE_FULL   = $(AMB_OPER_IMAGE)
+else
 AMB_OPER_IMAGE_FULL   = $(REL_REGISTRY)/$(AMB_OPER_IMAGE)
+endif
+export AMB_OPER_IMAGE_FULL
 
 AMB_OPER_PKGS        = $(shell go list ./...)
 AMB_OPER_SRCS        = $(shell find . -name '*.go' ! -path './ci/cluster-providers/*')
@@ -201,7 +206,7 @@ release_builds := \
 # collect all the final manifests that should be part of a release.
 # can be invoked with a different registry in "REL_REGISTRY"
 collect-manifests: $(ARTIFACTS_DIR) gen-crds
-	$(Q)$(TOP_DIR)/ci/create_manifests.sh $(AMB_OPER_IMAGE) $(ARTIFACTS_DIR)
+	$(Q)$(TOP_DIR)/ci/create_manifests.sh $(AMB_OPER_IMAGE_FULL) $(ARTIFACTS_DIR)
 
 release-manifests: collect-manifests
 
@@ -236,10 +241,10 @@ image-build: $(EXE) ## Build images
 			--path "$(IMAGE_EXTRA_FILE)" --content "$(IMAGE_EXTRA_FILE_CONTENT)" --image $(AMB_OPER_IMAGE) --check ; \
 		fi
 
-image-push: image-build ## Push images to the registry
+image-push: image-build ## Push images to the registry in REL_REGISTRY
 	$(Q)$(TOP_DIR)/hack/image/push-image-tags.sh $(AMB_OPER_IMAGE) $(AMB_OPER_IMAGE_FULL)
 
-chart-push: ## Push the Helm chart (will need some AWS env vars)
+chart-push: ## Push the Helm chart [will need some AWS env vars]
 	@echo ">>> Preparing Helm chart values with image=$(AMB_OPER_IMAGE_FULL)"
 	$(Q)mv $(AMB_OPER_CHART_VALS) $(AMB_OPER_CHART_VALS).bak
 	$(Q)cat $(AMB_OPER_CHART_VALS).bak | sed -e "s|ambassador-operator:dev|$(AMB_OPER_IMAGE_FULL)|g" > $(AMB_OPER_CHART_VALS)
@@ -261,13 +266,11 @@ test: ## Run the Go tests
 
 $(AMB_COVERAGE_FILE): test
 
-e2e: ## Run the e2e tests -- VERBOSE=1, TEST=<some-test.sh>, CLUSTER_KEEP=1
+e2e: collect-manifests ## Run the e2e tests [VERBOSE=1 TEST=<some-test.sh> CLUSTER_KEEP=1]
 	@echo ">>> Running e2e tests"
-	$(Q)AMB_OPER_IMAGE=$(AMB_OPER_IMAGE) make collect-manifests
-	$(Q)AMB_OPER_IMAGE=$(AMB_OPER_IMAGE) \
-		$(TOP_DIR)/tests/e2e/runner.sh \
-			--image-name=$(AMB_OPER_BASE_IMAGE) \
-			--image-tag=$(AMB_OPER_TAG) \
+	$(Q)$(TOP_DIR)/tests/e2e/runner.sh \
+			--image-name=$(AMB_OPER_IMAGE_NAME) \
+			--image-tag=$(AMB_OPER_IMAGE_TAG) \
 			check $(TEST)
 
 ##############################
@@ -306,6 +309,8 @@ ci/lint: lint
 ci/check-format-gen: format format-sh generate
 	$(Q)$(TOP_DIR)/hack/tests/check-dirty.sh
 
+ci/manifests: collect-manifests
+
 ci/build: lint build image-build
 
 ci/test: test
@@ -315,15 +320,18 @@ ci/e2e: e2e
 ci/all: ci/lint ci/build ci/test ci/e2e
 
 ci/release:
-	$(Q)AMB_OPER_IMAGE=$(AMB_OPER_IMAGE_FULL) make collect-manifests gen-crds-docs
+	@echo ">>> Creating a registry in the cloud (with $(CLUSTER_REGISTRY))"
+	$(Q)make collect-manifests gen-crds-docs
 
-ci/smoke-tests/kind:
+ci/smoke-tests/kind: ci/manifests
 	tests/smoke-tests/kind.sh setup
 	tests/smoke-tests/kind.sh run
 	tests/smoke-tests/kind.sh cleanup
 
 ci/publish-image: image-push
 
+# ci/publish-image-cloud creates a cloud with the CLOUD_PROVIDER, gets the DEV_REGISTRY
+# and uses it as the REL_REGISTRY, and then it pushes the image to the REL_REGISTRY
 ci/publish-image-cloud: clean
 	$(Q)[ -n "$(CLUSTER_REGISTRY)" ] || { echo "FATAL: no CLUSTER_REGISTRY defined" ; exit 1 ; }
 	$(Q)[ -n "$(CLUSTER_PROVIDER)" ] || { echo "FATAL: no CLUSTER_PROVIDER defined" ; exit 1 ; }

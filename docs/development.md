@@ -31,9 +31,12 @@ export GO111MODULE=on
 If you already have access to Kubernetes (i.e. you can use `kubectl` to interact
 with the cluster) then you are good to go. 
 
-If not, you can use [k3d](https://github.com/rancher/k3d), [KinD (Kubernetes in Docker)](https://github.com/kubernetes-sigs/kind),
-[MiniKube](https://github.com/kubernetes/minikube) or [K3S](https://k3s.io/) to run
-a local 'cluster' in your machine. Please follow the installation steps of your
+If not, you can use:
+
+* [k3d](https://github.com/rancher/k3d) or [K3S](https://k3s.io/)
+* [MiniKube](https://github.com/kubernetes/minikube)
+
+to run a local 'cluster' in your machine. Please follow the installation steps of your
 chosen distribution and make sure you have a working `kubectl` before you proceed
 to the next step.
 

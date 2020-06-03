@@ -15,7 +15,7 @@ source "$this_dir/../common.sh"
 ########################################################################################################################
 
 # the versions of Ambassador to install
-IMAGE_REPOSITORY="${REL_REGISTRY}/ambassador"
+IMAGE_REPOSITORY="${OFFICIAL_REGISTRY}/ambassador"
 
 ########################################################################################################################
 

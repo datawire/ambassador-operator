@@ -1005,24 +1005,41 @@ amb_inst_check_uninstalled() {
 # Operator
 ########################################################################################################################
 
-# 'cat' a manifest, replacing the default image (ie, ambassador-operator:dev)
-# by the full image name (ie, docker.io/datawire/ambassador-operator:v1.2.3)
+# get the full image name (ie, docker.io/datawire/ambassador-operator:v1.2.3)
+# an optional argument will force the "development" or "release" image
 get_full_image_name() {
-	if [ -n "$OPERATOR_IMAGE" ]; then
-		echo "$OPERATOR_IMAGE"
-	elif [ -n "$DEV_REGISTRY" ]; then
-		echo "$DEV_REGISTRY/$AMB_OPER_IMAGE_NAME:$AMB_OPER_IMAGE_TAG"
-	else
-		echo "$AMB_OPER_IMAGE_NAME:$AMB_OPER_IMAGE_TAG"
-	fi
+	local image="$AMB_OPER_IMAGE_NAME:$AMB_OPER_IMAGE_TAG"
+
+	case $1 in
+	"dev" | "development")
+		[ -n "$DEV_REGISTRY" ] || abort "no DEV_REGISTRY defined"
+		echo "$DEV_REGISTRY/$image"
+		;;
+	"rel" | "release")
+		[ -n "$REL_REGISTRY" ] || abort "no REL_REGISTRY defined"
+		echo "$REL_REGISTRY/$image"
+		;;
+	*)
+		if [ -n "$OPERATOR_IMAGE" ]; then
+			echo "$OPERATOR_IMAGE"
+		elif [ -n "$AMB_OPER_IMAGE_FULL" ]; then
+			echo "$AMB_OPER_IMAGE_FULL"
+		else
+			echo "$image"
+		fi
+		;;
+	esac
 }
 
 # 'cat' a manifest, replacing the default image (ie, ambassador-operator:dev)
 # by the full image name (ie, docker.io/datawire/ambassador-operator:v1.2.3)
 cat_setting_image() {
-	local full_image=$(get_full_image_name)
+	local filename=$1
+	local mode=${2:-dev}
+
+	local full_image="$(get_full_image_name $mode)"
 	info "(replacing image ${AMB_OPER_MANIF_DEF_IMAGE} by ${full_image})"
-	cat "$1" | sed -e "s|$AMB_OPER_MANIF_DEF_IMAGE|$full_image|g"
+	cat "$filename" | sed -e "s|$AMB_OPER_MANIF_DEF_IMAGE|$full_image|g"
 }
 
 # oper_uninstall <NS>
@@ -1122,7 +1139,7 @@ oper_install_yaml() {
 oper_install_helm() {
 	local namespace="$1"
 	helm install ambassador-operator --wait --namespace "$namespace" \
-		--set namespace="$namespace",image.name=$(get_full_image_name) \
+		--set namespace="$namespace",image.name=$(get_full_image_name dev) \
 		deploy/helm/ambassador-operator/
 }
 

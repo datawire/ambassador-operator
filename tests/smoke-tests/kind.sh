@@ -20,6 +20,12 @@ source "$TOP_DIR/ci/common.sh"
 
 ########################################################################################################################
 
+MANIF_URL="https://github.com/datawire/ambassador-operator/releases/latest/download/ambassador-operator-kind.yaml"
+
+CRD_URL="https://github.com/datawire/ambassador-operator/releases/latest/download/ambassador-operator-crds.yaml"
+
+########################################################################################################################
+
 # run verbose
 VERBOSE=${VERBOSE:-}
 
@@ -78,26 +84,22 @@ nodes:
 EOF
 	passed "cluster created"
 
-	info "Applying CRDs"
-	kubectl apply -f https://github.com/datawire/ambassador-operator/releases/latest/download/ambassador-operator-crds.yaml ||
-		abort "when loading the CRDs"
+	info "Applying CRDs from $CRD_URL"
+	kubectl apply -f $CRD_URL || abort "when loading the CRDs"
 	passed "CRDs loaded"
 
-	info "Installing and waiting for the Operator"
-	kubectl apply -n ambassador -f https://github.com/datawire/ambassador-operator/releases/latest/download/ambassador-operator-kind.yaml ||
-		abort "when loading for the Operator"
+	info "Installing from $MANIF_URL and waiting for the Operator"
+	kubectl apply -n ambassador -f $MANIF_URL || abort "when loading for the Operator"
 	kubectl wait --timeout=180s -n ambassador --for=condition=deployed ambassadorinstallations/ambassador ||
 		abort "when waiting for the Operator"
 	passed "Operator ready"
 
 	info "Loading an example..."
-	kubectl apply -f https://kind.sigs.k8s.io/examples/ingress/usage.yaml ||
-		abort "when loading the example"
+	kubectl apply -f https://kind.sigs.k8s.io/examples/ingress/usage.yaml || abort "when loading the example"
 	passed "example loaded"
 
 	info "Annotating Ingress..."
-	kubectl annotate ingress example-ingress kubernetes.io/ingress.class=ambassador ||
-		abort "when annotating ingress"
+	kubectl annotate ingress example-ingress kubernetes.io/ingress.class=ambassador || abort "when annotating ingress"
 	passed "Ingress annotated"
 
 	info "Wait for URLs..."

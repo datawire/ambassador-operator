@@ -13,7 +13,7 @@ source "$cm_dir/common.sh"
 #################################################################################################
 
 # arguments
-AMB_OPER_IMAGE=${AMB_OPER_IMAGE:-$1}
+AMB_OPER_IMAGE_FULL=${AMB_OPER_IMAGE_FULL:-$1}
 
 # the output directory
 ARTIFACTS_DIR=${ARTIFACTS_DIR:-$2}
@@ -36,8 +36,8 @@ helm_crds_manif="$helm_dir/crds/ambassador-installation.yaml"
 release_name="ambassador"
 namespace="ambassador"
 values_yaml="$helm_dir/values.yaml"
-full_image=$(get_full_image_name)
-args="-n ${namespace} --values $values_yaml --set image.name=${full_image}"
+full_image=$AMB_OPER_IMAGE_FULL
+args="-n ${namespace} --values $values_yaml --set image.name=${AMB_OPER_IMAGE_FULL}"
 
 namespace_manif=$(
 	cat <<EOF
@@ -61,7 +61,7 @@ info "Preparing release manifests in $ARTIFACTS_DIR"
 [ -f "$values_yaml" ] || abort "no 'values.yaml' found at '$values_yaml'"
 [ -n "$ARTIFACTS_DIR" ] || abort "no ARTIFACTS_DIR provided"
 [ -d "$ARTIFACTS_DIR" ] || abort "'$ARTIFACTS_DIR' is not a valid directory"
-[ -n "$AMB_OPER_IMAGE" ] || abort "no AMB_OPER_IMAGE provided"
+[ -n "$AMB_OPER_IMAGE_FULL" ] || abort "no AMB_OPER_IMAGE_FULL provided"
 
 rm -f $ARTIFACTS_DIR/*.yaml
 mkdir -p "$(dirname $ARTIFACTS_DIR)"
@@ -77,7 +77,7 @@ cp -f $artifact_crds_manif $helm_crds_manif || abort "could not create $helm_crd
 
 # then we use the Helm chart for generating the standalone manifest, using
 # the default values.yaml
-info "Rendering Helm chart, using image '${full_image}'..."
+info "Rendering Helm chart, using image '${AMB_OPER_IMAGE_FULL}'..."
 mkdir -p "$(dirname $tmp_manif)"
 helm template $release_name \
 	$args --set deploymentTool=amb-oper-manifest --skip-crds $helm_dir >$tmp_manif || abort "could not create $tmp_manif"
@@ -104,7 +104,7 @@ done
 
 if [ -n "$VERBOSE" ]; then
 	info "Showing manifests generated in $ARTIFACTS_DIR:"
-	for i in ls $ARTIFACTS_DIR/*.yaml; do
+	for i in $ARTIFACTS_DIR/*.yaml; do
 		info "... $i"
 		hl && cat $i && hl
 	done

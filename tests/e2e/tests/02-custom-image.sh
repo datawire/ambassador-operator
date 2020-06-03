@@ -14,8 +14,9 @@ source "$this_dir/../common.sh"
 # local variables
 ########################################################################################################################
 
-CUSTOM_IMAGE_FIRST="${REL_REGISTRY}/aes:1.3.0"
-CUSTOM_IMAGE_SECOND="${REL_REGISTRY}/aes:1.4.0"
+# released images that will be used for tests
+CUSTOM_IMAGE_FIRST="${OFFICIAL_REGISTRY}/aes:1.3.0"
+CUSTOM_IMAGE_SECOND="${OFFICIAL_REGISTRY}/aes:1.4.0"
 
 # the versions of Ambassador to install
 IMAGE_TAG_FIRST="1.3.0"

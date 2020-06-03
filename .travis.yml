@@ -1,3 +1,6 @@
+os: linux
+dist: xenial
+
 language: go
 
 go:
@@ -42,7 +45,8 @@ jobs:
     # see the ci/infra/providers/CREDENTIALS.md for details on the credentials
     - stage: End-to-end tests
       name: "e2e tests in Google Cloud (GKE)"
-      if: type = cron OR tag IS present
+      # Run on cron jobs, tagged releases or any builds where commit message contains "test-gke"
+      if: (type IN (cron, api) OR (tag =~ ^v) OR (commit_message =~ test-gke) OR (commit_message =~ test-cloud)) AND NOT (commit_message =~ skip-gke OR commit_message =~ skip-cloud)
       env:
         - CLUSTER_PROVIDER="gke"
         - CLUSTER_MACHINE="e2-standard-8"
@@ -50,7 +54,8 @@ jobs:
       script: make ci/cluster-setup ci/e2e
 
     - name: "e2e tests in Azure (AKS)"
-      if: type = cron OR tag IS present
+      # Run on cron jobs, tagged releases or any builds where commit message contains "test-azure"
+      if: (type IN (cron, api) OR (tag =~ ^v) OR (commit_message =~ test-azure) OR (commit_message =~ test-cloud)) AND NOT (commit_message =~ skip-azure OR commit_message =~ skip-cloud)
       env:
         - CLUSTER_PROVIDER="azure"
         - CLUSTER_REUSE=1
@@ -63,79 +68,39 @@ jobs:
     #####################################################
     # stage 3: push images
     #####################################################
-    - stage: Publish artifacts
-      name: "Publish artifacts to GitHub"
-      if: tag IS present
+    - stage: Push images to repositories
+      name: "Push images to repositories"
+      if: (branch =~ ^v) AND (tag =~ ^v) AND (type != pull_request) AND NOT (commit_message =~ skip-push)
       env:
-        - AMB_OPER_TAG="$TRAVIS_TAG"
-        - REL_REGISTRY="docker.io/datawire"
-      deploy:
-        - provider: script
-          on:
-            all_branches: true
-          script: make ci/release
-        # publish YAMLs to GitHub releases
-        # `make ci/release` should have left everything in build/artifacts/*
-        - provider: releases
-          on:
-            branch: master
-          api_key:
-            secure: XFAZ+q3B7TL7ae0lK6Nl4RCkYxknZ0gZ44g/aR5zOcTkAuJ9049vOUol7UQT9ZyRMMOigfma5IQRFqcQlHBPnBRGkuHFGqxx48Kw1pvLRR3BhIYG0aSyDR3ZnI0eEkaKzui1zKBC5R03DK1NpVl+muomNDWgsEb9M9qn7onYQPMfCi4ZZ8x/ev5GtXlHPrCh4O/m51X0nLoVMsvFaogNiiwKtS/sWlLTiY9DWwACF5yY58Q65l3GNiLaIQCIvdU3losq08KJViIE8qBNojCRr+zLXluOlpgVb7ozZ3vWNephuHZoRIvW8hH8MTgaiuDh+XGlbTNlLBrJAF43CPZLQdzZdLMp74XRx90OkXHA8p6crBoQRa5Q7/MhV0pswdMcSKnHIe9dRkkPiGmDGXFg5WAchI6egGskAD4SAZMmiXBoj8TcjtyDa4NExakebrrU/XzvU951teAk2czNs1yoXTDfrpgDiIfI7PaIXgUGJi8VjkuwgSZ8uU1EQNwrvhikngbtFKnzM7I2KGr3nIE9cTxxo81PWoElrGAarArQZjARJp1z2myTqPiUi3FcvFOmaeOZbTvHc2kt2Z5iZCJ4Np/YwmXL7pCjijxbb8MB6MrQLv96woX0do/lDDsq8tXrRRoxGqpRzvBtLWHVMw55aKrbnvfnic1HGwyMZnFex+E=
-          file_glob: true
-          file: build/artifacts/*
-          skip_cleanup: true
-
-    - name: "Publish image to Docker.io"
-      if: tag IS present
-      env:
-        - AMB_OPER_TAG="$TRAVIS_TAG"
-        - REL_REGISTRY="docker.io/datawire"
+        - AMB_OPER_IMAGE_TAG="$TRAVIS_TAG"
       deploy:
         # publish images to Docker.io
         # NOTE: make sure DOCKER_USERNAME/DOCKER_PASSWORD have values for a bot
         - provider: script
           on:
             all_branches: true
-          script: make ci/release ci/publish-image
-
-    - name: "Push images to Quay.io"
-      if: tag IS present
-      env:
-        - AMB_OPER_TAG="$TRAVIS_TAG"
-        - DOCKER_USERNAME="$QUAY_USERNAME"
-        - DOCKER_PASSWORD="$QUAY_PASSWORD"
-        - REL_REGISTRY="quay.io/datawire"
-      deploy:
+          script: REL_REGISTRY="docker.io/datawire" make ci/publish-image
         # publish images to Quay.io
         # NOTE: make sure DOCKER_USERNAME/DOCKER_PASSWORD have values for a bot
         #       (from https://quay.io/repository/datawire/ambassador-operator?tab=settings)
         - provider: script
           on:
-            branch: master
-          script: make ci/release ci/publish-image
-
-    - name: "Push images to Azure ACR"
-      if: tag IS present
-      env:
-        - AMB_OPER_TAG="$TRAVIS_TAG"
-        - CLUSTER_REGISTRY="datawire"
-        - CLUSTER_PROVIDER="azure"
-        - AZ_RES_GRP="DefaultResourceGroup-EUS"
-      deploy:
+            all_branches: true
+          script: DOCKER_USERNAME="$QUAY_USERNAME" DOCKER_PASSWORD="$QUAY_PASSWORD" REL_REGISTRY="quay.io/datawire" make ci/publish-image
         - provider: script
           on:
-            branch: master
-          env:
-          script: make ci/cluster-setup ci/release ci/publish-image-cloud/azure
+            all_branches: true
+          script: CLUSTER_PROVIDER="azure" CLUSTER_REGISTRY="datawire" AZ_RES_GRP="DefaultResourceGroup-EUS" make ci/cluster-setup ci/publish-image-cloud/azure
 
     #####################################################
     # stage 4: publish artifacts
     #####################################################
     - stage: Publish artifacts
-      name: "Publish artifacts to GitHub"
-      if: tag IS present
+      name: "Publish artifacts"
+      if: (branch =~ ^v) AND (tag =~ ^v) AND (type != pull_request) AND NOT (commit_message =~ skip-publish)
       env:
-        - AMB_OPER_TAG="$TRAVIS_TAG"
+        - AMB_OPER_IMAGE_TAG="$TRAVIS_TAG"
+        - REL_REGISTRY="docker.io/datawire"
       deploy:
         - provider: script
           on:
@@ -151,30 +116,21 @@ jobs:
           file_glob: true
           file: build/artifacts/*
           skip_cleanup: true
-
-    - name: "Publish Helm Chart"
-      if: tag IS present
-      env:
-        - AMB_OPER_TAG="$TRAVIS_TAG"
-        - DOCKER_USERNAME="$QUAY_USERNAME"
-        - DOCKER_PASSWORD="$QUAY_PASSWORD"
-        - REL_REGISTRY="quay.io/datawire"
-      deploy:
         # publish helm chart
         # NOTE: needs AWS_ACCESS_KEY_ID, AWS_BUCKET and AWS_SECRET_ACCESS_KEY (from keybase)
         - provider: script
           on:
-            branch: master
+            all_branches: true
           script: make ci/cluster-setup ci/publish-chart
 
     #####################################################
     # stage 5: smoke tests
     #####################################################
     - stage: Smoke tests
-      name: "Smoke tests for KIND"
-      if: tag IS present
+      name: "Smoke tests"
+      if: (branch =~ ^v) AND (tag =~ ^v) AND NOT (commit_message =~ skip-smoke)
       env:
-        - AMB_OPER_TAG="$TRAVIS_TAG"
+        - AMB_OPER_IMAGE_TAG="$TRAVIS_TAG"
       deploy:
         - provider: script
           on:

@@ -31,7 +31,7 @@ release something from your laptop.
 
 ### Publishing the image to the Azure registry
 
-- Determine the tag we will use for the image version, `AMB_OPER_TAG`.
+- Determine the tag we will use for the image version, `AMB_OPER_IMAGE_TAG`.
 - Get a credentials file for Azure, as described in the
   [credentials document](https://github.com/datawire/ambassador-operator/blob/master/ci/cluster-providers/CREDENTIALS.md#Azure).
 - Go to https://portal.azure.com/ and create a _Resource Group_, or use an existing one
@@ -43,7 +43,7 @@ release something from your laptop.
   CLUSTER_PROVIDER="azure" \
   AZ_AUTH_FILE=<AUTHENTICATION_FILE> \
   TRAVIS=true \
-  AMB_OPER_TAG=<TAG> \
+  AMB_OPER_IMAGE_TAG=<TAG> \
   make ci/publish-image-cloud
   ```
 
