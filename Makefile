@@ -323,10 +323,8 @@ ci/release:
 	@echo ">>> Creating a registry in the cloud (with $(CLUSTER_REGISTRY))"
 	$(Q)make collect-manifests gen-crds-docs
 
-ci/smoke-tests/kind: ci/manifests
-	tests/smoke-tests/kind.sh setup
-	tests/smoke-tests/kind.sh run
-	tests/smoke-tests/kind.sh cleanup
+ci/smoke-tests/kind:
+	tests/smoke-tests/kind.sh
 
 ci/publish-image: image-push
 
