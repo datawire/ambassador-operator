@@ -47,7 +47,7 @@ function push_image_tags() {
 		info "Pushing $source_image -> $push_image..."
 		docker push "$push_image"
 
-		if [ -n "$latest_image"]; then
+		if [ -n "$latest_image" ]; then
 			info "Pushing $source_image -> $latest_image"
 			docker push "$latest_image"
 		fi

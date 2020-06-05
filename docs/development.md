@@ -181,5 +181,14 @@ For your PRs, please make sure that:
 3. Have enough documentation for the users to get started
 
 
+### CI
 
+Our CI system recognizes some keywords in the commit messages for modifying the
+behavior of the pipeline:
+
+* `skip-tests`: for skipping tests.
+* `test-gke`/`skip-gke`/`skip-azure`/`test-azure`: for running or skipping tests in GKE/Azure.
+* `skip-cloud`: for skipping tests in GKE and Azure.
+* `skip-push`: for not pushing images to registries.
+* `skip-publish`: for not publishing the Chart and manifests.
 

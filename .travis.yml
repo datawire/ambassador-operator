@@ -46,7 +46,7 @@ jobs:
     - stage: End-to-end tests
       name: "e2e tests in Google Cloud (GKE)"
       # Run on cron jobs, tagged releases or any builds where commit message contains "test-gke"
-      if: (type IN (cron, api) OR (tag =~ ^v) OR (commit_message =~ test-gke) OR (commit_message =~ test-cloud)) AND NOT (commit_message =~ skip-gke OR commit_message =~ skip-cloud)
+      if: (type IN (cron, api) OR (tag =~ ^v) OR (commit_message =~ test-gke) OR (commit_message =~ test-cloud)) AND NOT (commit_message =~ skip-test OR commit_message =~ skip-gke OR commit_message =~ skip-cloud)
       env:
         - CLUSTER_PROVIDER="gke"
         - CLUSTER_MACHINE="e2-standard-8"
@@ -55,13 +55,14 @@ jobs:
 
     - name: "e2e tests in Azure (AKS)"
       # Run on cron jobs, tagged releases or any builds where commit message contains "test-azure"
-      if: (type IN (cron, api) OR (tag =~ ^v) OR (commit_message =~ test-azure) OR (commit_message =~ test-cloud)) AND NOT (commit_message =~ skip-azure OR commit_message =~ skip-cloud)
+      if: (type IN (cron, api) OR (tag =~ ^v) OR (commit_message =~ test-azure) OR (commit_message =~ test-cloud)) AND NOT (commit_message =~ skip-test OR commit_message =~ skip-azure OR commit_message =~ skip-cloud)
       env:
         - CLUSTER_PROVIDER="azure"
         - CLUSTER_REUSE=1
       script: make ci/cluster-setup ci/e2e
 
     - name: "e2e tests in a local (1 node) Kubernetes cluster (k3d)"
+      if: NOT (commit_message =~ skip-test)
       env: CLUSTER_PROVIDER="k3d"
       script: make ci/cluster-setup ci/e2e
 
