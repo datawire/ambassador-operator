@@ -35,7 +35,8 @@ const (
 
 // tryInstallOrUpdate checks if we need to update the Helm chart
 func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructured.Unstructured,
-	chartsMgr HelmManager, window UpdateWindow, helmValues HelmValuesStrings, isMigrating bool, flavor string) (reconcile.Result, error) {
+	chartsMgr HelmManager, window UpdateWindow, helmValues HelmValuesStrings,
+	isMigrating bool, specChanged bool, flavor string) (reconcile.Result, error) {
 	updateDeadline := time.Now().Add(defaultUpdateTimeout)
 	ctx, _ := context.WithDeadline(context.TODO(), updateDeadline)
 
@@ -52,7 +53,12 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 	// 1) a migration from OSS to AES has been specified
 	// 2) the .spec has changed
 	ignoreTime := false
-	if isMigrating || hasChangedSpec(ambObj) {
+	if isMigrating {
+		log.Info("Migrating OSS->AES: we will ignore the last check time")
+		ignoreTime = true
+	}
+	if specChanged {
+		log.Info(".spec changes detected: we will ignore the last check time")
 		ignoreTime = true
 	}
 

@@ -47,6 +47,10 @@ var (
 	// some default Helm values
 	defaultChartValues = HelmValues{
 		"deploymentTool": "amb-oper",
+
+		"licenseKey": map[string]interface{}{
+			"createSecret": false,
+		},
 	}
 
 	// default image used for the OSS version
@@ -248,6 +252,9 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 
 	status.RemoveCondition(ambassador.ConditionIrreconcilable)
 
+	// check if the spec has changed before doing any modification to the AmbIns
+	specChanged := hasChangedSpec(ambIns)
+
 	// process all static Helm values: the default ones, the ones coming from files, etc...
 	helmValues := HelmValues{}
 	helmValues.AppendFrom(defaultChartValues, true) // copy the default values
@@ -399,7 +406,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 	}
 
 	r.ReportEvent("completed_reconciliation")
-	return r.tryInstallOrUpdate(ambIns, chartsMgr, window, helmValuesStrings, isMigrating, flavor)
+	return r.tryInstallOrUpdate(ambIns, chartsMgr, window, helmValuesStrings, isMigrating, specChanged, flavor)
 }
 
 func (r *ReconcileAmbassadorInstallation) updateResource(o runtime.Object) error {

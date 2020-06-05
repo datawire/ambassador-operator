@@ -69,6 +69,49 @@ func TestHasChangedSpec(t *testing.T) {
 			hasChanged: false,
 		},
 		{
+			description: "changes not in the spec",
+			instance: stringToUnstr(`
+{
+    "apiVersion": "getambassador.io/v2",
+    "kind": "AmbassadorInstallation",
+    "metadata": {
+        "annotations": {
+            "kubectl.kubernetes.io/last-applied-configuration": "{\"apiVersion\":\"getambassador.io/v2\",\"kind\":\"AmbassadorInstallation\",\"metadata\":{\"annotations\":{},\"name\":\"ambassador\",\"namespace\":\"ambassador\"},\"spec\":{\"helmValues\":{\"image\":{\"pullPolicy\":\"Always\"},\"namespace\":{\"name\":\"ambassador\"},\"service\":{\"ports\":[{\"name\":\"http\",\"port\":80,\"targetPort\":8080}],\"type\":\"NodePort\"}},\"version\":\"1.*\"}}\n"
+        },
+        "creationTimestamp": "2020-05-28T09:12:59Z",
+        "generation": 3,
+        "name": "ambassador",
+        "namespace": "ambassador",
+        "resourceVersion": "1587",
+        "selfLink": "/apis/getambassador.io/v2/namespaces/ambassador/ambassadorinstallations/ambassador",
+        "uid": "f5e70521-837b-4891-84c1-2e713ae6e3da"
+    },
+    "spec": {
+        "helmValues": {
+            "image": {
+                "pullPolicy": "Always"
+            },
+            "namespace": {
+                "name": "ambassador"
+            },
+            "service": {
+                "ports": [
+                    {
+                        "name": "http",
+                        "port": 80,
+                        "targetPort": 8080
+                    }
+                ],
+                "type": "NodePort"
+            }
+        },
+        "version": "1.*"
+    }
+}
+`),
+			hasChanged: false,
+		},
+		{
 			description: "changed version number to 2.*",
 			instance: stringToUnstr(`
 {

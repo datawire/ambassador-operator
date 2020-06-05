@@ -18,6 +18,9 @@ source "$this_dir/../common.sh"
 IMAGE_REPOSITORY="${OFFICIAL_REGISTRY}/ambassador"
 AES_IMAGE_REPOSITORY="${OFFICIAL_REGISTRY}/aes"
 
+# a license for AES (it does not need to be valid)
+AES_LICENSE_CONTENTS="this-is-a-license"
+
 ########################################################################################################################
 
 [ -z "$DEV_REGISTRY" ] && abort "no DEV_REGISTRY defined"
@@ -78,6 +81,9 @@ amb_inst_check_success -n "$TEST_NAMESPACE" || {
 	oper_logs_dump -n "$TEST_NAMESPACE" failed "Success not found in AmbassadorInstallation description"
 }
 
+info "Adding a AES license..."
+edgectl license -n "$TEST_NAMESPACE" $AES_LICENSE_CONTENTS
+
 info "Updating AmbassadorInstallation with 'installOSS: false'..."
 apply_amb_inst_aes -n "$TEST_NAMESPACE"
 info "AmbassadorInstallation updated successfully..."
@@ -113,6 +119,15 @@ amb_inst_check_success -n "$TEST_NAMESPACE" || {
 	amb_inst_describe -n "$TEST_NAMESPACE"
 	failed "Success not found in AmbassadorInstallation description"
 }
+
+info "Checking the AES license..."
+amb_license_data -n "$TEST_NAMESPACE" | grep -q "$AES_LICENSE_CONTENTS" || {
+	warn "License not present or has changed:"
+	amb_license_secret -n "$TEST_NAMESPACE"
+	oper_logs_dump -n "$TEST_NAMESPACE"
+	failed "License not present or has changed:"
+}
+passed "AES license has not changed."
 
 [ -n "$VERBOSE" ] && {
 	info "Describe: AmbassadorInstallation:" && amb_inst_describe -n "$TEST_NAMESPACE"
