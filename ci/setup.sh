@@ -58,3 +58,8 @@ passed "... installed setuptools successfully"
 info "Installing awscli..."
 sudo pip3 install awscli || abort "could not install awscli"
 passed "... installed awscli successfully"
+
+info "Installing edgectl..."
+curl -fLO https://metriton.datawire.io/downloads/linux/edgectl
+chmod a+x edgectl
+mv edgectl $HOME/bin # Somewhere in your PATH
