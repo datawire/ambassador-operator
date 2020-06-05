@@ -882,6 +882,16 @@ amb_restart() {
 	wait_deploy "$AMB_DEPLOY" $@
 }
 
+# returns the AES license as YAML
+amb_license_secret() {
+	kubectl get $@ secret ambassador-edge-stack -o yaml
+}
+
+# returns the AES license _data_ as it was saved with 'edgectl license _data_'
+amb_license_data() {
+	kubectl get $@ secret ambassador-edge-stack -o=jsonpath='{.data.license-key}' | base64 -d
+}
+
 ########################################################################################################################
 # AmbassadorInstallation
 ########################################################################################################################
