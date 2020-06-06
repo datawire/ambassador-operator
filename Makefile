@@ -331,11 +331,6 @@ ci/smoke-tests/minikube:
 	tests/smoke-tests/minikube.sh run
 	tests/smoke-tests/minikube.sh cleanup
 
-ci/smoke-tests/minikube:
-	tests/smoke-tests/minikube.sh setup
-	tests/smoke-tests/minikube.sh run
-	tests/smoke-tests/minikube.sh cleanup
-
 ci/publish-image: image-push
 
 # ci/publish-image-cloud creates a cloud with the CLOUD_PROVIDER, gets the DEV_REGISTRY
