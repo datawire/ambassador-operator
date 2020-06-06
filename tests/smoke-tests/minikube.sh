@@ -23,10 +23,10 @@ MINIKUBE_URL="https://storage.googleapis.com/minikube/releases/latest/minikube-l
 ########################################################################################################################
 
 setup() {
-    info "Installing minikube"
-    curl -Lo ./minikube "$MINIKUBE_URL"
-    chmod +x ./minikube
-    mkdir -p "$(dirname "$MINIKUBE_EXE")"
+	info "Installing minikube"
+	curl -Lo ./minikube "$MINIKUBE_URL"
+	chmod +x ./minikube
+	mkdir -p "$(dirname "$MINIKUBE_EXE")"
 	mv ./minikube "$MINIKUBE_EXE"
 }
 
@@ -39,56 +39,56 @@ cleanup() {
 }
 
 run() {
-    info "Running minikube smoke tests"
+	info "Running minikube smoke tests"
 
-    [ -x "$MINIKUBE_EXE" ] || abort "no minikube executable at $MINIKUBE_EXE (env var MINIKUBE_EXE)"
+	[ -x "$MINIKUBE_EXE" ] || abort "no minikube executable at $MINIKUBE_EXE (env var MINIKUBE_EXE)"
 
-    info "Starting a Kubernetes cluster with minikube (VM driver: none)"
-    sudo "$MINIKUBE_EXE" start --vm-driver=none --profile=minikube || abort "error creating minikube cluster"
-    "$MINIKUBE_EXE" update-context --profile=minikube
-    passed "created minikube cluster"
+	info "Starting a Kubernetes cluster with minikube (VM driver: none)"
+	sudo "$MINIKUBE_EXE" start --vm-driver=none --profile=minikube || abort "error creating minikube cluster"
+	"$MINIKUBE_EXE" update-context --profile=minikube
+	passed "created minikube cluster"
 
-    "$MINIKUBE_EXE" addons enable ambassador
-    passed "enabled ambassador addon in minikube"
+	"$MINIKUBE_EXE" addons enable ambassador
+	passed "enabled ambassador addon in minikube"
 
-    kubectl wait --timeout=180s -n ambassador --for=condition=deployed ambassadorinstallations/ambassador ||
-        abort "operator not ready"
-    passed "operator ready"
+	kubectl wait --timeout=180s -n ambassador --for=condition=deployed ambassadorinstallations/ambassador ||
+		abort "operator not ready"
+	passed "operator ready"
 
-    kubectl wait --timeout=180s -n ambassador --for=condition=available deployment/ambassador-operator ||
-        abort "operator pods never came up"
+	kubectl wait --timeout=180s -n ambassador --for=condition=available deployment/ambassador-operator ||
+		abort "operator pods never came up"
 
-    kubectl wait --timeout=180s -n ambassador --for=condition=available deployment/ambassador ||
-        abort "ambassador pods never came up"
-    passed "ambassador ready"
+	kubectl wait --timeout=180s -n ambassador --for=condition=available deployment/ambassador ||
+		abort "ambassador pods never came up"
+	passed "ambassador ready"
 
-    info "Creating echoserver for ingress traffic"
-    kubectl create deployment hello-minikube --image=k8s.gcr.io/echoserver:1.4
-    wait_deploy "hello-minikube"
+	info "Creating echoserver for ingress traffic"
+	kubectl create deployment hello-minikube --image=k8s.gcr.io/echoserver:1.4
+	wait_deploy "hello-minikube"
 
-    kubectl expose deployment hello-minikube --port=8080
+	kubectl expose deployment hello-minikube --port=8080
 
-    cat <<EOF | kubectl apply -f - || abort "error creating ingress"
+	cat <<EOF | kubectl apply -f - || abort "error creating ingress"
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
   annotations:
-    kubernetes.io/ingress.class: ambassador
+	kubernetes.io/ingress.class: ambassador
   name: test-ingress
 spec:
   rules:
   - http:
-      paths:
-      - path: /hello/
-        backend:
-          serviceName: hello-minikube
-          servicePort: 8080
+	  paths:
+	  - path: /hello/
+		backend:
+		  serviceName: hello-minikube
+		  servicePort: 8080
 EOF
-    passed "ingress created"
+	passed "ingress created"
 
-    kubectl port-forward service/ambassador -n ambassador 8080:80 &
-    wait_url localhost:8080/hello/ || abort "did not get 200 OK from ingress endpoint"
-    passed "got 200 OK from ingress endpoint, everything looks good!"
+	kubectl port-forward service/ambassador -n ambassador 8080:80 &
+	wait_url localhost:8080/hello/ || abort "did not get 200 OK from ingress endpoint"
+	passed "got 200 OK from ingress endpoint, everything looks good!"
 }
 
 ########################################################################################################################
