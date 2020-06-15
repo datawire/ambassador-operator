@@ -7,15 +7,9 @@ spec:
   installOSS: true
   helmValues:
     deploymentTool: amb-oper-microk8s
-    tolerations:
-      - key: "node-role.kubernetes.io/master"
-        operator: Equal
-        effect: NoSchedule
     replicaCount: 1
     deploymentStrategy:
       type: Recreate
-    nodeSelector:
-      ingress-ready: "true"
     service:
       type: NodePort
       ports:
