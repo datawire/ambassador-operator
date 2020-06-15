@@ -30,15 +30,16 @@ var (
 	// but we don't want to be invoked if those secrets change. For
 	// other resources, it depends on how much we want to enforce the state...
 	defaultIgnoredResources = map[string]struct{}{
-		"AuthService":      {},
-		"Deployment":       {},
-		"Filter":           {},
-		"FilterPolicy":     {},
-		"Mapping":          {},
-		"RateLimitService": {},
-		"Secret":           {},
-		"Service":          {},
-		"ServiceAccount":   {},
+		"AuthService":           {},
+		"Deployment":            {},
+		"Filter":                {},
+		"FilterPolicy":          {},
+		"Mapping":               {},
+		"PersistentVolumeClaim": {},
+		"RateLimitService":      {},
+		"Secret":                {},
+		"Service":               {},
+		"ServiceAccount":        {},
 	}
 )
 
@@ -85,6 +86,11 @@ func add(mgr manager.Manager, r *ReconcileAmbassadorInstallation) error {
 			}
 
 			gvk := u.GroupVersionKind()
+			if gvk.Empty() {
+				log.Info("Cannot decode object: ignored...")
+				continue
+			}
+
 			m.RLock()
 			_, ok := watches[gvk]
 			m.RUnlock()
@@ -114,11 +120,17 @@ func add(mgr manager.Manager, r *ReconcileAmbassadorInstallation) error {
 				continue
 			}
 
+			if len(gvk.Kind) == 0 {
+				log.V(1).Info("Will ignore changes in resource", "ownerApiVersion", r.GVK.GroupVersion(), "ownerKind", r.GVK.Kind, "apiVersion", gvk.GroupVersion(), "kind", gvk.Kind)
+				continue
+			}
+
 			if _, ok := defaultIgnoredResources[gvk.Kind]; ok {
 				log.V(1).Info("Will ignore changes in resource", "ownerApiVersion", r.GVK.GroupVersion(), "ownerKind", r.GVK.Kind, "apiVersion", gvk.GroupVersion(), "kind", gvk.Kind)
 				continue
 			}
 
+			log.Info("Watching dependent resource", "ownerApiVersion", r.GVK.GroupVersion(), "ownerKind", r.GVK.Kind, "apiVersion", gvk.GroupVersion(), "kind", gvk.Kind)
 			err = c.Watch(&source.Kind{Type: &u}, &handler.EnqueueRequestForOwner{OwnerType: owner}, dependentPredicate)
 			if err != nil {
 				return err
@@ -127,7 +139,6 @@ func add(mgr manager.Manager, r *ReconcileAmbassadorInstallation) error {
 			m.Lock()
 			watches[gvk] = struct{}{}
 			m.Unlock()
-			log.V(1).Info("Watching dependent resource", "ownerApiVersion", r.GVK.GroupVersion(), "ownerKind", r.GVK.Kind, "apiVersion", gvk.GroupVersion(), "kind", gvk.Kind)
 		}
 	}
 	r.releaseHook = releaseHook

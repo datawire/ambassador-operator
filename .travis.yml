@@ -131,15 +131,13 @@ jobs:
     - stage: Smoke tests
       name: "Smoke tests"
       if: (commit_message =~ test-smoke) OR ((branch =~ ^v) AND (tag =~ ^v) AND NOT (commit_message =~ skip-smoke))
+      on:
+        all_branches: true
       env:
         - AMB_OPER_IMAGE_TAG="$TRAVIS_TAG"
-      deploy:
-        - provider: script
-          script: make ci/smoke-tests/minikube
-        - provider: script
-          on:
-            all_branches: true
-          script: CLUSTER_PROVIDER="kind" make ci/cluster-setup ci/smoke-tests/kind
+      script:
+        - CLUSTER_PROVIDER="" make ci/smoke-tests/minikube
+        - CLUSTER_PROVIDER="kind" make ci/cluster-setup ci/smoke-tests/kind
 
 after_success:
   - make ci/after-success

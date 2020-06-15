@@ -2,8 +2,8 @@ package ambassadorinstallation
 
 import (
 	"errors"
-	"reflect"
 
+	"github.com/go-test/deep"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -16,7 +16,7 @@ var (
 func hasChangedSpec(o *unstructured.Unstructured) bool {
 	log.Info("Comparing changes with previously applied configuration")
 
-	prev, err := getPreviousApplied(o)
+	prev, err := getLastApplied(o)
 	if err == errNoPrevConfigFound {
 		log.Info("AmbassadorInstallation was not applied before")
 		return false
@@ -46,11 +46,17 @@ func hasChangedSpec(o *unstructured.Unstructured) bool {
 		return false
 	}
 
-	return !reflect.DeepEqual(prevSpec, currSpec)
+	if diff := deep.Equal(prevSpec, currSpec); diff != nil {
+		log.Info("changes detected in .spec", "change", diff)
+		return true
+	}
+
+	log.Info("No changes detected in .spec")
+	return false
 }
 
-// getPreviousApplied returns the previously applied configuration
-func getPreviousApplied(o *unstructured.Unstructured) (unstructured.Unstructured, error) {
+// getLastApplied returns the previously applied configuration
+func getLastApplied(o *unstructured.Unstructured) (unstructured.Unstructured, error) {
 	const previousAppliedAnnot = "kubectl.kubernetes.io/last-applied-configuration"
 	prevStr, found := o.GetAnnotations()[previousAppliedAnnot]
 	if !found {

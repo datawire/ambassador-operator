@@ -7,6 +7,11 @@ import (
 	"time"
 )
 
+const (
+	durSrcEnv     = "environment"
+	durSrcDefault = "default"
+)
+
 func contains(l []string, s string) bool {
 	for _, elem := range l {
 		if elem == s {
@@ -26,16 +31,19 @@ func parseRepoTag(s string) (string, string, error) {
 	return res[0], res[1], nil
 }
 
-func getEnvDuration(name string, d time.Duration) time.Duration {
+func getEnvDuration(name string, d time.Duration) (time.Duration, string) {
 	var err error
 	updateInterval := d
+	source := durSrcDefault
+
 	if e := os.Getenv(name); len(e) > 0 {
 		updateInterval, err = time.ParseDuration(e)
 		if err != nil {
 			log.Error(err, "Could not parse update interval from environ variable: IGNORED", "value", e)
 		}
+		source = durSrcEnv
 	}
-	return updateInterval
+	return updateInterval, source
 }
 
 // fileExists checks if a file exists and is not a directory before we
