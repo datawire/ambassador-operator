@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/go-test/deep"
 	rpb "helm.sh/helm/v3/pkg/release"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/kubectl/pkg/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -95,8 +97,12 @@ type ReconcileAmbassadorInstallation struct {
 }
 
 func NewReconcileAmbassadorInstallation(mgr manager.Manager) *ReconcileAmbassadorInstallation {
-	checkInterval := getEnvDuration(defaultCheckIntervalEnvVar, defaultCheckInterval)
-	updateInterval := getEnvDuration(defaultUpdateIntervalEnvVar, defaultUpdateInterval)
+	checkInterval, checkIntervalSrc := getEnvDuration(defaultCheckIntervalEnvVar, defaultCheckInterval)
+	updateInterval, updateIntervalSrc := getEnvDuration(defaultUpdateIntervalEnvVar, defaultUpdateInterval)
+
+	log.Info("Intervals",
+		"check", checkInterval, "checkIntervalSrc", checkIntervalSrc,
+		"update", updateInterval, "updateIntervalSrc", updateIntervalSrc)
 
 	return &ReconcileAmbassadorInstallation{
 		Manager:            mgr,
@@ -254,16 +260,22 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 
 	// check if the spec has changed before doing any modification to the AmbIns
 	specChanged := hasChangedSpec(ambIns)
+	if specChanged {
+		if err := r.updateResourceLastApplied(ambIns); err != nil {
+			log.Info("Could not save last-applied annotation: %v", err)
+			return reconcile.Result{}, err
+		}
+	}
 
 	// process all static Helm values: the default ones, the ones coming from files, etc...
 	helmValues := HelmValues{}
 	helmValues.AppendFrom(defaultChartValues, true) // copy the default values
 
 	for _, f := range defExtraValuesFiles {
-		log.Info("Trying to load values from file", "file", f)
+		log.Info("Looking for helm values in file", "filename", f)
 		values, err := readValuesFile(f)
 		if err != nil {
-			log.Info("Error when loading file", "file", f, "error", err)
+			log.Info("Could not load helm values file", "filename", f, "error", err)
 			continue
 		}
 		helmValues.AppendFrom(values, true)
@@ -418,27 +430,14 @@ func (r *ReconcileAmbassadorInstallation) updateResourceStatus(o *unstructured.U
 	return r.Client.Status().Update(context.TODO(), o)
 }
 
-// Initialize the Scout instance and reset.
-func (r *ReconcileAmbassadorInstallation) BeginReporting(mode string, installID types.UID) {
-	r.Scout = NewScout(mode, installID)
-}
-
-// ReportEvent sends an event to Metriton
-func (r *ReconcileAmbassadorInstallation) ReportEvent(eventName string, meta ...ScoutMeta) {
-	log.Info("[Metrics]", "event", eventName)
-	if err := r.Scout.Report(eventName, meta...); err != nil {
-		log.Info("[Metrics]", "event", eventName, "error", err)
+func (r *ReconcileAmbassadorInstallation) updateResourceLastApplied(o runtime.Object) error {
+	before := o.DeepCopyObject()
+	if err := util.CreateOrUpdateAnnotation(true, o, unstructured.UnstructuredJSONScheme); err != nil {
+		log.Error(err, "could not update last-applied-configuration in .spec")
+		return err
 	}
-}
-
-// Utility function for reporting an error with a message and an error code,
-// sending the message and error in metadata.  Also logs it to the error log.
-func (r *ReconcileAmbassadorInstallation) ReportError(eventName string, message string, err error) {
-	// Send to Metriton
-	r.ReportEvent(eventName,
-		ScoutMeta{"message", message},
-		ScoutMeta{"error", err})
-
-	// send to the error log
-	log.Error(err, message)
+	if diff := deep.Equal(before, o); diff != nil {
+		log.Info("updated last-applied-configuration in .spec", "change", diff)
+	}
+	return r.Client.Update(context.TODO(), o)
 }

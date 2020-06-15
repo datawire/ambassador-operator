@@ -155,8 +155,8 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 
 		if r.releaseHook != nil {
 			if err := r.releaseHook(installedRelease); err != nil {
-				log.Error(err, "Failed to run release hook")
-				return reconcile.Result{}, err
+				log.Error(err, "Failed to run release hook on install", "checkInterval", r.checkInterval)
+				return reconcile.Result{RequeueAfter: r.checkInterval}, err
 			}
 		}
 
@@ -221,7 +221,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 
 		if r.releaseHook != nil {
 			if err := r.releaseHook(updatedRelease); err != nil {
-				log.Error(err, "Failed to run release hook")
+				log.Error(err, "Failed to run release hook on update")
 				return reconcile.Result{}, err
 			}
 		}
@@ -287,7 +287,7 @@ func (r *ReconcileAmbassadorInstallation) tryInstallOrUpdate(ambObj *unstructure
 
 	if r.releaseHook != nil {
 		if err := r.releaseHook(expectedRelease); err != nil {
-			log.Error(err, "Failed to run release hook")
+			log.Error(err, "Failed to run release hook when reconciling", "checkInterval", r.checkInterval)
 			return reconcile.Result{RequeueAfter: r.checkInterval}, err
 		}
 	}
