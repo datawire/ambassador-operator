@@ -20,14 +20,19 @@ MINIKUBE_EXE=${MINIKUBE_EXE:-$BIN_DIR/minikube}
 
 MINIKUBE_URL="https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64"
 
+MINIKUBE_SUDO=${MINIKUBE_SUDO:-sudo}
+
 ########################################################################################################################
 
 setup() {
-	info "Installing minikube"
+	info "Installing minikube..."
 	curl -Lo ./minikube "$MINIKUBE_URL"
 	chmod +x ./minikube
 	mkdir -p "$(dirname "$MINIKUBE_EXE")"
 	mv ./minikube "$MINIKUBE_EXE"
+
+	info "Installing conntrack..."
+	sudo apt-get install -y conntrack
 }
 
 cleanup() {
@@ -35,7 +40,7 @@ cleanup() {
 
 	[ -x "$MINIKUBE_EXE" ] || abort "no minikube executable at $MINIKUBE_EXE (env var MINIKUBE_EXE)"
 
-	$MINIKUBE_EXE delete
+	$MINIKUBE_SUDO $MINIKUBE_EXE delete
 }
 
 run() {
@@ -44,11 +49,11 @@ run() {
 	[ -x "$MINIKUBE_EXE" ] || abort "no minikube executable at $MINIKUBE_EXE (env var MINIKUBE_EXE)"
 
 	info "Starting a Kubernetes cluster with minikube (VM driver: none)"
-	sudo "$MINIKUBE_EXE" start --vm-driver=none --profile=minikube || abort "error creating minikube cluster"
+	$MINIKUBE_SUDO "$MINIKUBE_EXE" start --vm-driver=none --profile=minikube || abort "error creating minikube cluster"
 	"$MINIKUBE_EXE" update-context --profile=minikube
 	passed "created minikube cluster"
 
-	"$MINIKUBE_EXE" addons enable ambassador
+	$MINIKUBE_SUDO "$MINIKUBE_EXE" addons enable ambassador || abort "enabling ambassador"
 	passed "enabled ambassador addon in minikube"
 
 	kubectl wait --timeout=180s -n ambassador --for=condition=deployed ambassadorinstallations/ambassador ||
