@@ -352,6 +352,11 @@ ci/publish-image-cloud/azure:
 		IMAGE_EXTRA_FILE="/tmp/cloud-values.yaml" \
 		IMAGE_EXTRA_FILE_CONTENT="deploymentTool: amb-oper-azure"
 
+ci/publish-image-cloud/gcr:
+	$(Q)[ "$(CLUSTER_PROVIDER)" = "gke" ] || { echo "FATAL: CLUSTER_PROVIDER is not gke" ; exit 1 ; }
+	make ci/publish-image-cloud \
+		IMAGE_EXTRA_FILE_CONTENT="deploymentTool: amb-oper-gke"
+
 ci/publish-chart: chart-push
 
 ci/publish-coverage: $(AMB_COVERAGE_FILE)
