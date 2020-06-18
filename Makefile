@@ -355,6 +355,7 @@ ci/publish-image-cloud/azure:
 ci/publish-image-cloud/gcr:
 	$(Q)[ "$(CLUSTER_PROVIDER)" = "gke" ] || { echo "FATAL: CLUSTER_PROVIDER is not gke" ; exit 1 ; }
 	make ci/publish-image-cloud \
+		IMAGE_EXTRA_FILE="/tmp/cloud-values.yaml" \
 		IMAGE_EXTRA_FILE_CONTENT="deploymentTool: amb-oper-gke"
 
 ci/publish-chart: chart-push
@@ -381,4 +382,3 @@ ci/cleanup:
 	@echo ">>> Cleaning up CI"
 	$(Q)$(TOP_DIR)/tests/e2e/runner.sh cleanup
 	$(Q)$(TOP_DIR)/ci/cleanup.sh
-
