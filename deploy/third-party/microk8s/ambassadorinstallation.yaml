@@ -15,9 +15,11 @@ spec:
       ports:
         - name: http
           port: 80
+          hostPort: 80
           targetPort: 8080
           protocol: TCP
         - name: https
           port: 443
+          hostPort: 443
           targetPort: 8443
           protocol: TCP
