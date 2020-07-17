@@ -5,14 +5,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/go-test/deep"
 	rpb "helm.sh/helm/v3/pkg/release"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/kubectl/pkg/util"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -260,11 +258,9 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 
 	// check if the spec has changed before doing any modification to the AmbIns
 	specChanged := hasChangedSpec(ambIns)
-	if specChanged {
-		if err := r.updateResourceLastApplied(ambIns); err != nil {
-			log.Info("Could not save last-applied annotation: %v", err)
-			return reconcile.Result{}, err
-		}
+	if err := r.updateResource(ambIns); err != nil {
+		log.Info("Could update AmbassadorInstallation with the last spec hash: %v", err)
+		return reconcile.Result{}, err
 	}
 
 	// process all static Helm values: the default ones, the ones coming from files, etc...
@@ -428,16 +424,4 @@ func (r *ReconcileAmbassadorInstallation) updateResource(o runtime.Object) error
 func (r *ReconcileAmbassadorInstallation) updateResourceStatus(o *unstructured.Unstructured, status *ambassador.AmbassadorInstallationStatus) error {
 	o.Object["status"] = status
 	return r.Client.Status().Update(context.TODO(), o)
-}
-
-func (r *ReconcileAmbassadorInstallation) updateResourceLastApplied(o runtime.Object) error {
-	before := o.DeepCopyObject()
-	if err := util.CreateOrUpdateAnnotation(true, o, unstructured.UnstructuredJSONScheme); err != nil {
-		log.Error(err, "could not update last-applied-configuration in .spec")
-		return err
-	}
-	if diff := deep.Equal(before, o); diff != nil {
-		log.Info("updated last-applied-configuration in .spec", "change", diff)
-	}
-	return r.Client.Update(context.TODO(), o)
 }
