@@ -15,7 +15,7 @@ source "$this_dir/../common.sh"
 ########################################################################################################################
 
 # the versions of Ambassador to install
-AMB_VERSION="1.4.1"
+AMB_VERSION="1.6.0"
 
 # the managed-by we are expecting
 EXPECTED_MANAGED_BY="amb-oper-manifest"
@@ -58,13 +58,8 @@ passed "... good! /tmp/helm/values.yaml contains deploymentTool = $EXPECTED_MANA
 info "Checking we can install Ambassador..."
 amb_inst_apply_version "$AMB_VERSION" -n "$TEST_NAMESPACE" || failed "could not instruct the operator to install $AMB_VERSION"
 sleep 1
-info "Waiting for the Operator to install Ambassador"
-if ! wait_amb_addr -n "$TEST_NAMESPACE"; then
-	warn "Ambassador not installed. Dumping Operator's logs:"
-	oper_logs_dump -n "$TEST_NAMESPACE"
-	failed "could not get an Ambassador IP"
-fi
-passed "... good! Ambassador has been installed by the Operator!"
+
+oper_wait_install_amb -n "$TEST_NAMESPACE" || abort "the Operator did not install Ambassador"
 
 info "Checking that Ambassador has the managed-by == $EXPECTED_MANAGED_BY"
 sleep 10

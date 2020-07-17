@@ -15,7 +15,7 @@ source "$this_dir/../common.sh"
 ########################################################################################################################
 
 # the versions of Ambassador to install
-AMB_VERSION_FIRST="1.3.0"
+AMB_VERSION_FIRST="1.5.0"
 AMB_VERSION_SECOND_EXP="1.*"
 
 ########################################################################################################################
@@ -33,18 +33,7 @@ info "Installing Ambassador with version=${AMB_VERSION_FIRST}..."
 amb_inst_apply_version "$AMB_VERSION_FIRST" -n "$TEST_NAMESPACE" || failed "coud not instruct the operator to install ${AMB_VERSION_FIRST}"
 passed "... instructed the operator to install ${AMB_VERSION_FIRST}"
 
-info "Waiting for the Operator to install Ambassador"
-if ! wait_amb_addr -n "$TEST_NAMESPACE"; then
-	warn "Ambassador not installed. Dumping Operator's logs:"
-	oper_logs_dump -n "$TEST_NAMESPACE"
-	failed "could not get an Ambassador IP"
-fi
-passed "... good! Ambassador has been installed by the Operator!"
-
-[ -n "$VERBOSE" ] && {
-	info "Describe: Ambassador Operator deployment:" && oper_describe -n "$TEST_NAMESPACE"
-	info "Describe: Ambassador deployment:" && amb_describe -n "$TEST_NAMESPACE"
-}
+oper_wait_install_amb -n "$TEST_NAMESPACE" || abort "the Operator did not install Ambassador"
 
 info "Checking the version of Ambassador that has been deployed is $AMB_VERSION_FIRST..."
 if ! amb_check_image_tag "$AMB_VERSION_FIRST" -n "$TEST_NAMESPACE"; then

@@ -1069,10 +1069,10 @@ oper_uninstall() {
 	info "Removing the operator..."
 	cat_setting_image "$AMB_OPER_MANIF" | kubectl delete $KUBECTL_DELETE_ARGS -n "$namespace" -f -
 	for f in $AMB_OPER_CRDS "$AMB_OPER_MANIF"; do
-		info "... removing $f"
+		info "... deleting resources from  $f"
 		kubectl delete -n "$namespace" $KUBECTL_DELETE_ARGS -f $f || {
 			oper_logs_dump -n "$namespace"
-			abort "could not delete $f"
+			abort "could not delete resources from $f"
 		}
 	done
 
@@ -1105,9 +1105,9 @@ oper_install() {
 	info "Creating test namespace $namespace..."
 	kubectl create namespace "$namespace" 2>/dev/null || /bin/true
 
-	info "================================="
-	info "Deploying via $method"
-	info "================================="
+	info "----------------------"
+	info "Deploying with $method"
+	info "----------------------"
 	case "$method" in
 	"yaml" | "YAML" | "Yaml" | "manifest" | "manifests")
 		oper_install_yaml "$namespace"
@@ -1166,6 +1166,39 @@ oper_wait_install() {
 	passed "... the Ambassador operator is alive"
 }
 
+# wait for the Operator to install Ambassador
+oper_wait_install_amb() {
+	info "Waiting for the Operator to install Ambassador..."
+	if ! wait_amb_addr $@; then
+		warn "Ambassador not installed. Dumping Operator's logs:"
+		oper_logs_dump $@
+		warn "Current deployments:"
+		kubectl get deployments $@
+		failed "could not get an Ambassador IP"
+	fi
+
+	passed "... good! Ambassador has an IP address!"
+	info "Waiting for all the pods to be available now..."
+
+	wait_deploy $AMB_DEPLOY $@ || {
+		warn "Ambassador not available."
+		warn "Current deployments:"
+		kubectl get deployments $@
+		failed "not all the Ambassador pods available"
+	}
+
+	[ -n "$VERBOSE" ] && {
+		info "Describe: Ambassador Operator deployment:" && oper_describe -n "$TEST_NAMESPACE"
+		info "Describe: Ambassador deployment:" && amb_describe -n "$TEST_NAMESPACE"
+	}
+
+	info "Current deployments:"
+	kubectl get deployments $@
+
+	passed "... good! Ambassador has been installed by the Operator!"
+}
+
+# get a random pod in the Operator
 oper_get_random_pod() {
 	kubectl get pod $@ -l "name=ambassador-operator" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null
 }

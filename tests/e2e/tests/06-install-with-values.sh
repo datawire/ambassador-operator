@@ -15,10 +15,10 @@ source "$this_dir/../common.sh"
 ########################################################################################################################
 
 # the versions of Ambassador to install
-AMB_VERSION="1.4.1"
+AMB_VERSION="1.6.0"
 
 # `image.tag` that will be forced in a helmvalue
-AMB_IMAGE_TAG="1.4.0"
+AMB_IMAGE_TAG="1.5.5"
 
 ########################################################################################################################
 
@@ -63,15 +63,7 @@ EOF
 #    service.ports[1].port: 443
 #    service.ports[1].targetPort: 8443
 
-info "Waiting for the Operator to install Ambassador"
-if ! wait_amb_addr -n "$TEST_NAMESPACE"; then
-	warn "It seems Ambassador was not installed:"
-	kubectl get deplokments -n $TEST_NAMESPACE
-	warn "Dumping Operator's logs:"
-	oper_logs_dump -n "$TEST_NAMESPACE"
-	failed "timeout while waiting for an Ambassador IP"
-fi
-passed "... good! Ambassador has been installed by the Operator!"
+oper_wait_install_amb -n "$TEST_NAMESPACE" || abort "the Operator did not install Ambassador"
 
 info "Checking Ambassador values:"
 values="$(helm get values -n "$TEST_NAMESPACE" ${AMB_INSTALLATION_NAME})"
