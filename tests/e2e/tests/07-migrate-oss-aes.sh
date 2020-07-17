@@ -38,23 +38,7 @@ info "Creating AmbassadorInstallation with 'installOSS: true'..."
 apply_amb_inst_oss -n "$TEST_NAMESPACE"
 info "AmbassadorInstallation created successfully..."
 
-info "Waiting for the Operator to install Ambassador"
-if ! wait_amb_addr -n "$TEST_NAMESPACE"; then
-	warn "Ambassador not installed. Dumping Operator's logs:"
-	oper_logs_dump -n "$TEST_NAMESPACE"
-	failed "could not get an Ambassador IP"
-fi
-passed "... good! Ambassador has been installed by the Operator!"
-
-[ -n "$VERBOSE" ] && {
-	info "Describe: Ambassador Operator deployment:" && oper_describe -n "$TEST_NAMESPACE"
-	info "Describe: Ambassador deployment:" && amb_describe -n "$TEST_NAMESPACE"
-}
-
-[ -n "$VERBOSE" ] && {
-	info "Describe: Ambassador Operator deployment:" && oper_describe -n "$TEST_NAMESPACE"
-	info "Describe: Ambassador deployment:" && amb_describe -n "$TEST_NAMESPACE"
-}
+oper_wait_install_amb -n "$TEST_NAMESPACE" || abort "the Operator did not install Ambassador"
 
 info "Checking the repository of Ambassador that has been deployed is $IMAGE_REPOSITORY..."
 if ! amb_check_image_repository "$IMAGE_REPOSITORY" -n "$TEST_NAMESPACE"; then
@@ -114,6 +98,8 @@ if ! amb_check_image_repository "$AES_IMAGE_REPOSITORY" -n "$TEST_NAMESPACE"; th
 fi
 passed "... good! Ambassador has been deployed with $AES_IMAGE_REPOSITORY"
 
+kubectl get -n "$TEST_NAMESPACE" AmbassadorInstallation
+
 amb_inst_check_success -n "$TEST_NAMESPACE" || {
 	warn "Success not found in AmbassadorInstallation:"
 	amb_inst_describe -n "$TEST_NAMESPACE"
@@ -127,11 +113,14 @@ amb_license_data -n "$TEST_NAMESPACE" | grep -q "$AES_LICENSE_CONTENTS" || {
 	oper_logs_dump -n "$TEST_NAMESPACE"
 	failed "License not present or has changed:"
 }
-passed "AES license has not changed."
+passed "AES license contents ($AES_LICENSE_CONTENTS) have not changed."
 
 [ -n "$VERBOSE" ] && {
 	info "Describe: AmbassadorInstallation:" && amb_inst_describe -n "$TEST_NAMESPACE"
 	info "Logs: Ambassador operator" && oper_logs_dump -n "$TEST_NAMESPACE"
 }
+
+# TODO: we should test that we cannot migrate and upgrade at the same time
+#       (ie, from OSS v1 to AES v2)
 
 exit 0

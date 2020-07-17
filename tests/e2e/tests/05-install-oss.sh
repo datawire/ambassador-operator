@@ -34,23 +34,7 @@ info "Creating AmbassadorInstallation with 'installOSS: true'..."
 apply_amb_inst_oss -n "$TEST_NAMESPACE"
 info "AmbassadorInstallation created successfully..."
 
-info "Waiting for the Operator to install Ambassador"
-if ! wait_amb_addr -n "$TEST_NAMESPACE"; then
-	warn "Ambassador not installed. Dumping Operator's logs:"
-	oper_logs_dump -n "$TEST_NAMESPACE"
-	failed "could not get an Ambassador IP"
-fi
-passed "... good! Ambassador has been installed by the Operator!"
-
-[ -n "$VERBOSE" ] && {
-	info "Describe: Ambassador Operator deployment:" && oper_describe -n "$TEST_NAMESPACE"
-	info "Describe: Ambassador deployment:" && amb_describe -n "$TEST_NAMESPACE"
-}
-
-[ -n "$VERBOSE" ] && {
-	info "Describe: Ambassador Operator deployment:" && oper_describe -n "$TEST_NAMESPACE"
-	info "Describe: Ambassador deployment:" && amb_describe -n "$TEST_NAMESPACE"
-}
+oper_wait_install_amb -n "$TEST_NAMESPACE" || abort "the Operator did not install Ambassador"
 
 info "Checking the repository of Ambassador that has been deployed is $IMAGE_REPOSITORY..."
 if ! amb_check_image_repository "$IMAGE_REPOSITORY" -n "$TEST_NAMESPACE"; then

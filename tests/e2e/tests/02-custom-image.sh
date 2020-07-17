@@ -14,13 +14,13 @@ source "$this_dir/../common.sh"
 # local variables
 ########################################################################################################################
 
-# released images that will be used for tests
-CUSTOM_IMAGE_FIRST="${OFFICIAL_REGISTRY}/aes:1.3.0"
-CUSTOM_IMAGE_SECOND="${OFFICIAL_REGISTRY}/aes:1.4.0"
-
 # the versions of Ambassador to install
-IMAGE_TAG_FIRST="1.3.0"
-IMAGE_TAG_SECOND="1.4.0"
+IMAGE_TAG_FIRST="1.5.5"
+IMAGE_TAG_SECOND="1.6.0"
+
+# released images that will be used for tests
+CUSTOM_IMAGE_FIRST="${OFFICIAL_REGISTRY}/aes:${IMAGE_TAG_FIRST}"
+CUSTOM_IMAGE_SECOND="${OFFICIAL_REGISTRY}/aes:${IMAGE_TAG_SECOND}"
 
 ########################################################################################################################
 
@@ -39,13 +39,7 @@ info "Creating AmbassadorInstallation with baseImage=${CUSTOM_IMAGE_FIRST}..."
 apply_amb_inst_image ${CUSTOM_IMAGE_FIRST} -n "$TEST_NAMESPACE"
 info "AmbassadorInstallation created successfully..."
 
-info "Waiting for the Operator to install Ambassador"
-if ! wait_amb_addr -n "$TEST_NAMESPACE"; then
-	warn "Ambassador not installed. Dumping Operator's logs:"
-	oper_logs_dump -n "$TEST_NAMESPACE"
-	failed "could not get an Ambassador IP"
-fi
-passed "... good! Ambassador has been installed by the Operator!"
+oper_wait_install_amb -n "$TEST_NAMESPACE" || abort "the Operator did not install Ambassador"
 
 [ -n "$VERBOSE" ] && {
 	info "Describe: Ambassador Operator deployment:" && oper_describe -n "$TEST_NAMESPACE"
