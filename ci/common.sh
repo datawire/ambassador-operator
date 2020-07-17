@@ -1127,8 +1127,6 @@ oper_install() {
 	}
 
 	info "Reducing check/update frequency update=$AMB_OPER_UPDATE_INTERVAL/check=$AMB_OPER_CHECK_INTERVAL..."
-	kubectl set env -n "$namespace" deployments "$AMB_OPER_DEPLOY" AMB_UPDATE_INTERVAL="$AMB_OPER_UPDATE_INTERVAL"
-	kubectl set env -n "$namespace" deployments "$AMB_OPER_DEPLOY" AMB_CHECK_INTERVAL="$AMB_OPER_CHECK_INTERVAL"
 	kubectl rollout restart -n "$namespace" deployments "$AMB_OPER_DEPLOY"
 	sleep 1
 	wait_deploy "$AMB_OPER_DEPLOY" -n "$namespace" || return 1
