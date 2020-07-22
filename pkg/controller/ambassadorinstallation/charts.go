@@ -19,6 +19,15 @@ var (
 	defHelmValuesFullPath = []string{"spec", defHelmValuesFieldName}
 )
 
+// there are two different "helm values":
+//
+// - regular helm values: they are typed, and can be expressed as a tree.
+// - "compact" (or string) values: they use the format used in `helm install --set`,
+//   separating nodes in a tree with dots. They are not typed, and the
+//   right side of the assignment is interpreted as a string.
+//
+// we must support the "compact" values for backwards compatibility
+
 // HelmValues is the values for the Helm chart
 type HelmValues map[string]interface{}
 
@@ -31,7 +40,7 @@ func GetHelmValuesAmbIns(ambIns *unstructured.Unstructured) HelmValues {
 	return helmValues
 }
 
-// Append appends all the `other` helm values
+// GetString gets a string value from the Helm values
 func (hv HelmValues) GetString(k string) (string, bool, error) {
 	ambIns := &unstructured.Unstructured{
 		Object: map[string]interface{}{
@@ -43,7 +52,7 @@ func (hv HelmValues) GetString(k string) (string, bool, error) {
 	return unstructured.NestedString(ambIns.Object, append(defHelmValuesFullPath, k)...)
 }
 
-// Append appends all the `other` helm values
+// AppendFrom appends all the `other` helm values
 func (hv *HelmValues) AppendFrom(other HelmValues, overwrite bool) {
 	for k, v := range other {
 		_, found := (*hv)[k]
