@@ -44,10 +44,18 @@ const (
 )
 
 var (
-	// some default Helm values
-	defaultChartValues = HelmValues{
+	// some default Helm values for new installations
+	defaultChartValuesNewInstallations = HelmValues{
 		"deploymentTool": "amb-oper",
+		"licenseKey": map[string]interface{}{
+			"createSecret": true,
+		},
+	}
 
+	// default Helm values when doing upgrades or re-installations
+	// TODO: remove the duplication with `defaultChartValuesNewInstallations`
+	defaultChartValuesUpgrades = HelmValues{
+		"deploymentTool": "amb-oper",
 		"licenseKey": map[string]interface{}{
 			"createSecret": false,
 		},
@@ -224,6 +232,10 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		return reconcile.Result{}, nil
 	}
 
+	lastCondition := status.LastCondition(ambassador.AmbInsCondition{})
+	log.V(2).Info("Last condition",
+		"type", lastCondition.Type, "reason", lastCondition.Reason, "status", lastCondition.Status)
+
 	// check if this is the first and only AmbassadorInstallation in this namespace
 	// if it is not, mark the status as Duplicate
 	isFirstAmbIns, err := r.isFirstAmbInst(ambIns)
@@ -265,7 +277,13 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 
 	// process all static Helm values: the default ones, the ones coming from files, etc...
 	helmValues := HelmValues{}
-	helmValues.AppendFrom(defaultChartValues, true) // copy the default values
+
+	// copy the default Helm values
+	if lastCondition.Type == ambassador.ConditionDeployed {
+		helmValues.AppendFrom(defaultChartValuesUpgrades, true)
+	} else {
+		helmValues.AppendFrom(defaultChartValuesNewInstallations, true)
+	}
 
 	for _, f := range defExtraValuesFiles {
 		log.Info("Looking for helm values in file", "filename", f)
