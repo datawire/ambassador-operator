@@ -8,7 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/datawire/ambassador/pkg/helm"
+	"github.com/datawire/ambassador-operator/pkg/helm"
 )
 
 const (

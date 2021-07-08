@@ -165,13 +165,13 @@ $(ARTIFACTS_DIR):
 	$(Q)rm -rf $(ARTIFACTS_DIR)
 	$(Q)mkdir -p $(ARTIFACTS_DIR)
 
-gen-k8s:  ## Generate k8s code from CRD definitions
+gen-k8s:  $(TOP_DIR)/bin/operator-sdk ## Generate k8s code from CRD definitions
 	@echo ">>> Generating k8s sources..."
-	@operator-sdk generate k8s
+	@$(TOP_DIR)/bin/operator-sdk generate k8s
 
-gen-crds:  ## Generate CRDs manifests from CRD definitions
+gen-crds:  $(TOP_DIR)/bin/operator-sdk ## Generate CRDs manifests from CRD definitions
 	@echo ">>> Generating CRDs..."
-	$(Q)operator-sdk generate crds
+	$(Q)$(TOP_DIR)/bin/operator-sdk generate crds
 	@echo ">>> CRDs available at deploy/crds"
 
 # needs `go get github.com/ahmetb/gen-crd-api-reference-docs`
@@ -217,6 +217,17 @@ $(TOP_DIR)/build/ambassador-operator-%-x86_64-apple-darwin: GOARGS = GOOS=darwin
 $(TOP_DIR)/build/ambassador-operator-%-ppc64le-linux-gnu: GOARGS = GOOS=linux GOARCH=ppc64le
 $(TOP_DIR)/build/ambassador-operator-%-linux-gnu: GOARGS = GOOS=linux
 
+ifeq ($(shell uname),Darwin)
+  os=apple-darwin
+else
+  os=linux-gnu
+endif
+
+$(TOP_DIR)/bin/operator-sdk:
+	@mkdir -p `dirname $@`
+	curl -L -o $@ "https://github.com/operator-framework/operator-sdk/releases/download/v0.15.0/operator-sdk-v0.15.0-x86_64-$(os)"
+	chmod +x $@
+
 $(TOP_DIR)/build/%: $(AMB_OPER_SRCS)
 	@echo ">>> Building $@"
 	$(Q)$(GOARGS) go build \
@@ -233,7 +244,7 @@ $(TOP_DIR)/build/%: $(AMB_OPER_SRCS)
 
 image: image-build image-push ## Build and push all images
 
-image-build: $(EXE) ## Build images
+image-build: $(EXE) $(TOP_DIR)/bin/operator-sdk ## Build images
 	@echo ">>> Building image $(AMB_OPER_IMAGE)"
 	$(Q)$(TOP_DIR)/hack/image/build-amb-oper-image.sh $(AMB_OPER_IMAGE)
 	$(Q)if [ -n "$(IMAGE_EXTRA_FILE)" ] && [ -n "$(IMAGE_EXTRA_FILE_CONTENT)" ] ; then \

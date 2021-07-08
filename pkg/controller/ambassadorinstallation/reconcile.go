@@ -15,9 +15,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/datawire/ambassador/pkg/helm"
-
 	ambassador "github.com/datawire/ambassador-operator/pkg/apis/getambassador/v2"
+	"github.com/datawire/ambassador-operator/pkg/helm"
 )
 
 // note: base on the code of the Helm operator:
