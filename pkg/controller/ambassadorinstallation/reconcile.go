@@ -202,11 +202,27 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 		return reconcile.Result{}, err
 	}
 
+	var chartName string
+	isV2 := false
+	// if versions greater than 2.0.0-ea are allowed, change the chart name
+	ok, err := chartVersion.Allowed("2.0.0-ea")
+	if err == nil && ok {
+		isV2 = true
+		if spec.InstallOSS {
+			chartName = helm.DefaultEmissaryChartName
+		} else {
+			chartName = helm.DefaultEdgeStackChartName
+		}
+	} else {
+		chartName = helm.DefaultChartName
+	}
+
 	options := HelmManagerOptions{
 		Manager: r.Manager,
 		DownloaderOptions: helm.DownloaderOptions{
-			URL:     spec.HelmRepo,
-			Version: chartVersion,
+			URL:       spec.HelmRepo,
+			Version:   chartVersion,
+			ChartName: chartName,
 		},
 	}
 	// create a new manager for the remote Helm repo URL
@@ -383,7 +399,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 
 		// We do not want to update image.repository and image.tag if they have already been populated by user supplied
 		// configuration.
-		if len(helmValuesStrings["image.repository"]) == 0 && len(helmValuesStrings["image.tag"]) == 0 {
+		if len(helmValuesStrings["image.repository"]) == 0 && len(helmValuesStrings["image.tag"]) == 0 && !isV2 {
 			reqLogger.Info("Setting image to OSS", "image", defOSSImageRepository)
 			helmValuesStrings["image.repository"] = defOSSImageRepository
 		}

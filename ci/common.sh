@@ -796,6 +796,18 @@ amb_check_image_tag() {
 	info "${deployed_version} matches the expected version (${expected_version})"
 }
 
+amb_check_chart_name() {
+	chart_name=$(kubectl get deploy -n ${1} ambassador -o go-template='{{index .metadata.labels "helm.sh/chart"}}')
+
+	if ! echo ${chart_name} | grep "^${2}" >/dev/null; then
+		warn "Chart name ${chart_name} does not match ${2}"
+		return 1
+	else
+		info "Chart name matches!"
+		return 0
+	fi
+}
+
 # amb_check_image_repository <REPO> <KUBECTL_ARGS...>
 # check that the Ambassador image has repository <REPOSITORY>
 amb_check_image_repository() {
@@ -1023,7 +1035,8 @@ get_full_image_name() {
 	case $1 in
 	"dev" | "development")
 		[ -n "$DEV_REGISTRY" ] || abort "no DEV_REGISTRY defined"
-		echo "$DEV_REGISTRY/$image"
+		tag=$(git describe)
+		echo "$DEV_REGISTRY/$AMB_OPER_IMAGE_NAME:${tag}"
 		;;
 	"rel" | "release")
 		[ -n "$REL_REGISTRY" ] || abort "no REL_REGISTRY defined"

@@ -165,13 +165,18 @@ $(ARTIFACTS_DIR):
 	$(Q)rm -rf $(ARTIFACTS_DIR)
 	$(Q)mkdir -p $(ARTIFACTS_DIR)
 
+# These need to be set for the generate k8s operation,
+# but GOROOT _cannot_ be set for generate crds because life is a nightmare
+GOPATH ?= $(HOME)/go
+GOROOT ?= $(GOPATH)
+
 gen-k8s:  $(TOP_DIR)/bin/operator-sdk ## Generate k8s code from CRD definitions
 	@echo ">>> Generating k8s sources..."
-	@$(TOP_DIR)/bin/operator-sdk generate k8s
+	$(Q)GOPATH=$(GOPATH) GOROOT=$(GOROOT) $(TOP_DIR)/bin/operator-sdk generate k8s
 
 gen-crds:  $(TOP_DIR)/bin/operator-sdk ## Generate CRDs manifests from CRD definitions
 	@echo ">>> Generating CRDs..."
-	$(Q)$(TOP_DIR)/bin/operator-sdk generate crds
+	$(Q)GOROOT= $(TOP_DIR)/bin/operator-sdk generate crds
 	@echo ">>> CRDs available at deploy/crds"
 
 # needs `go get github.com/ahmetb/gen-crd-api-reference-docs`
