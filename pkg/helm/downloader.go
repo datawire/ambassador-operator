@@ -76,8 +76,8 @@ func fileIsArchive(u url.URL) bool {
 	}
 }
 
-// HelmDownloader is a downloader for a remote Helm repo or a file, provided with an URL
-type HelmDownloader struct {
+// Downloader is a downloader for a remote Helm repo or a file, provided with an URL
+type Downloader struct {
 	URL     *url.URL
 	Version ChartVersionRule
 
@@ -94,32 +94,32 @@ type HelmDownloader struct {
 	log *log.Logger
 }
 
-// HelmDownloaderOptions specifies options for creating the Helm manager
-type HelmDownloaderOptions struct {
+// DownloaderOptions specifies options for creating the Helm manager
+type DownloaderOptions struct {
 	URL      string
 	KubeInfo *k8s.KubeInfo
 	Version  ChartVersionRule
 	Logger   *log.Logger
 }
 
-// NewHelmDownloader creates a new charts manager
+// NewDownloader creates a new charts manager
 // The Helm Manager will use the URL provided, and download (lazily) a Chart that
 // obeys the Version Rule.
-func NewHelmDownloader(options HelmDownloaderOptions) (HelmDownloader, error) {
+func NewDownloader(options DownloaderOptions) (Downloader, error) {
 	// process the URL, using the default URL when not provided
 	if options.URL == "" {
 		options.URL = DefaultHelmRepoURL
 	}
 	pu, err := url.Parse(options.URL)
 	if err != nil {
-		return HelmDownloader{}, err
+		return Downloader{}, err
 	}
 
 	if options.Logger == nil {
 		options.Logger = log.New(os.Stderr, "", log.LstdFlags)
 	}
 
-	return HelmDownloader{
+	return Downloader{
 		URL:      pu,
 		KubeInfo: options.KubeInfo,
 		Version:  options.Version,
@@ -129,7 +129,7 @@ func NewHelmDownloader(options HelmDownloaderOptions) (HelmDownloader, error) {
 
 // GetChart returns the metadata about the Chart that has been downloaded
 // from URL with the given constraints (like the Version)
-func (lc HelmDownloader) GetChart() *chart.Metadata {
+func (lc Downloader) GetChart() *chart.Metadata {
 	if lc.downChartDir == "" {
 		panic(fmt.Errorf("must Download() before trying to get the chart"))
 	}
@@ -138,12 +138,12 @@ func (lc HelmDownloader) GetChart() *chart.Metadata {
 }
 
 // GetValues returns the version rules associated with this Helm manager
-func (lc HelmDownloader) GetVersionRule() ChartVersionRule {
+func (lc Downloader) GetVersionRule() ChartVersionRule {
 	return lc.Version
 }
 
 // GetReleaseMgr returns a manager for the latest
-func (lc *HelmDownloader) Download() error {
+func (lc *Downloader) Download() error {
 	var err error
 
 	// parse the helm repo URL and try to download the helm chart
@@ -187,7 +187,7 @@ func (lc *HelmDownloader) Download() error {
 }
 
 // Cleanup removed all the download directories
-func (lc *HelmDownloader) Cleanup() error {
+func (lc *Downloader) Cleanup() error {
 	cleanup := lc.downDirCleanup
 	if d := os.Getenv("DEBUG"); d != "" {
 		cleanup = false
@@ -203,7 +203,7 @@ func (lc *HelmDownloader) Cleanup() error {
 }
 
 // downloadChartFile downloads a Chart archive from a URL
-func (lc *HelmDownloader) downloadChartFile(url *url.URL) error {
+func (lc *Downloader) downloadChartFile(url *url.URL) error {
 	// creates/erases the downloads directory, ignoring any error (just in case it does not exist)
 	d, err := ioutil.TempDir("", "chart-download")
 	if err != nil {
@@ -234,7 +234,7 @@ func (lc *HelmDownloader) downloadChartFile(url *url.URL) error {
 	return nil
 }
 
-func (lc *HelmDownloader) findInRepo() (*url.URL, error) {
+func (lc *Downloader) findInRepo() (*url.URL, error) {
 	chartName := DefaultChartName
 	repoURL := lc.URL.String()
 
@@ -340,7 +340,7 @@ func (lc *HelmDownloader) findInRepo() (*url.URL, error) {
 }
 
 // lookupChart looks for the chart in a directory or subdirectory that can contain a Chart
-func (lc *HelmDownloader) lookupChart() error {
+func (lc *Downloader) lookupChart() error {
 	res := ""
 
 	if lc.downChartDir == "" {
@@ -382,6 +382,6 @@ func (lc *HelmDownloader) lookupChart() error {
 	return nil
 }
 
-func (lc HelmDownloader) GetChartDirectory() string {
+func (lc Downloader) GetChartDirectory() string {
 	return filepath.Dir(lc.downChartFile)
 }

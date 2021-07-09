@@ -204,7 +204,7 @@ func (r *ReconcileAmbassadorInstallation) Reconcile(request reconcile.Request) (
 
 	options := HelmManagerOptions{
 		Manager: r.Manager,
-		HelmDownloaderOptions: helm.HelmDownloaderOptions{
+		DownloaderOptions: helm.DownloaderOptions{
 			URL:     spec.HelmRepo,
 			Version: chartVersion,
 		},

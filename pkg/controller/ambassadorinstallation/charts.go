@@ -90,25 +90,25 @@ type HelmValuesStrings map[string]string
 // HelmManager is a remote Helm repo or a file, provided with an URL
 type HelmManager struct {
 	mgr manager.Manager
-	helm.HelmDownloader
+	helm.Downloader
 }
 
 type HelmManagerOptions struct {
 	Manager manager.Manager
-	helm.HelmDownloaderOptions
+	helm.DownloaderOptions
 }
 
 // NewHelmManager creates a new charts manager
 // The Helm Manager will use the URL provided, and download (lazily) a Chart that
 // obeys the Version Rule.
 func NewHelmManager(options HelmManagerOptions) (HelmManager, error) {
-	downloader, err := helm.NewHelmDownloader(options.HelmDownloaderOptions)
+	downloader, err := helm.NewDownloader(options.DownloaderOptions)
 	if err != nil {
 		return HelmManager{}, err
 	}
 	return HelmManager{
-		mgr:            options.Manager,
-		HelmDownloader: downloader,
+		mgr:        options.Manager,
+		Downloader: downloader,
 	}, nil
 }
 

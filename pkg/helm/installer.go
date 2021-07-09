@@ -12,7 +12,7 @@ import (
 	"helm.sh/helm/v3/pkg/release"
 )
 
-func (lc *HelmDownloader) Install(namespace string, values map[string]interface{}) (*release.Release, error) {
+func (lc *Downloader) Install(namespace string, values map[string]interface{}) (*release.Release, error) {
 	// based on https://github.com/helm/helm/blob/master/cmd/helm/install.go#L158-L225
 
 	settings := cli.New()
