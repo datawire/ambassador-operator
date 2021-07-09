@@ -62,13 +62,14 @@ amb_inst_check_success -n "$TEST_NAMESPACE" || {
 	oper_logs_dump -n "$TEST_NAMESPACE" failed "Success not found in AmbassadorInstallation description"
 }
 
-cat <<EOF | kubectl apply -n "$TEST_NAMESPACE" -f -
+kubectl apply -n "${TEST_NAMESPACE}" -f - <<EOF
 apiVersion: getambassador.io/v2
 kind: AuthService
 metadata:
   name: authentication
 spec:
   timeout_ms: 5000
+  auth_service: my-auth-service
 EOF
 
 info "Updating AmbassadorInstallation with 'installOSS: false'..."
@@ -79,7 +80,7 @@ info "Waiting for Operator to trigger an update..."
 sleep 5
 
 i=0
-timeout=$DEF_WAIT_TIMEOUT
+timeout=20
 until [ "$(kubectl get deployments "$AMB_DEPLOY" -n "$TEST_NAMESPACE" -o=jsonpath='{.status.updatedReplicas}')" -ne 3 ] || [ $i -ge $timeout ]; do
 	info "Checking if AES is installed: $i"
 	info "updatedReplicas $(kubectl get deployments "$AMB_DEPLOY" -n "$TEST_NAMESPACE" -o=jsonpath='{.status.updatedReplicas}'), required 3"
