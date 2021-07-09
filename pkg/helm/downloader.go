@@ -88,7 +88,7 @@ type HelmDownloader struct {
 	downChart     *chart.Metadata
 
 	// Directory where the chart will be / has been downloaded (the chart will be in a subdirectory inside)
-	DownChartDir   string
+	downChartDir   string
 	downDirCleanup bool
 
 	log *log.Logger
@@ -130,7 +130,7 @@ func NewHelmDownloader(options HelmDownloaderOptions) (HelmDownloader, error) {
 // GetChart returns the metadata about the Chart that has been downloaded
 // from URL with the given constraints (like the Version)
 func (lc HelmDownloader) GetChart() *chart.Metadata {
-	if lc.DownChartDir == "" {
+	if lc.downChartDir == "" {
 		panic(fmt.Errorf("must Download() before trying to get the chart"))
 	}
 
@@ -173,7 +173,7 @@ func (lc *HelmDownloader) Download() error {
 		}
 
 	case "file", "":
-		lc.DownChartDir = lc.URL.String()
+		lc.downChartDir = lc.URL.String()
 		lc.log.Printf("Finding chart in %s", lc.URL.String())
 		if err = lc.lookupChart(); err != nil {
 			return err
@@ -192,11 +192,11 @@ func (lc *HelmDownloader) Cleanup() error {
 	if d := os.Getenv("DEBUG"); d != "" {
 		cleanup = false
 	}
-	if lc.DownChartDir != "" && cleanup {
-		lc.log.Printf("Removing downloads directory %q", lc.DownChartDir)
-		_ = os.RemoveAll(lc.DownChartDir)
+	if lc.downChartDir != "" && cleanup {
+		lc.log.Printf("Removing downloads directory %q", lc.downChartDir)
+		_ = os.RemoveAll(lc.downChartDir)
 	}
-	lc.DownChartDir = ""
+	lc.downChartDir = ""
 	lc.downChartFile = ""
 	lc.downChart = nil
 	return nil
@@ -209,7 +209,7 @@ func (lc *HelmDownloader) downloadChartFile(url *url.URL) error {
 	if err != nil {
 		return err
 	}
-	lc.DownChartDir = d
+	lc.downChartDir = d
 	lc.downDirCleanup = true
 
 	filename := filepath.Base(url.Path)
@@ -219,14 +219,14 @@ func (lc *HelmDownloader) downloadChartFile(url *url.URL) error {
 	rand.Read(randBytes)
 	tempFilename := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%s", hex.EncodeToString(randBytes), filename))
 
-	lc.log.Printf("Downloading file %q (temp=%q) (dest=%q)", url, tempFilename, lc.DownChartDir)
+	lc.log.Printf("Downloading file %q (temp=%q) (dest=%q)", url, tempFilename, lc.downChartDir)
 	if err := downloadFile(tempFilename, url.String()); err != nil {
 		return err
 	}
 	defer func() { _ = os.Remove(tempFilename) }()
 
 	lc.log.Printf("Uncompressing file")
-	if err := archiver.Unarchive(tempFilename, lc.DownChartDir); err != nil {
+	if err := archiver.Unarchive(tempFilename, lc.downChartDir); err != nil {
 		return err
 	}
 	lc.log.Printf("File uncompressed")
@@ -343,11 +343,11 @@ func (lc *HelmDownloader) findInRepo() (*url.URL, error) {
 func (lc *HelmDownloader) lookupChart() error {
 	res := ""
 
-	if lc.DownChartDir == "" {
+	if lc.downChartDir == "" {
 		panic(fmt.Errorf("no downloads directory: must Download() before trying to find the chart"))
 	}
 
-	_ = filepath.Walk(lc.DownChartDir, func(path string, info os.FileInfo, err error) error {
+	_ = filepath.Walk(lc.downChartDir, func(path string, info os.FileInfo, err error) error {
 		if res != "" {
 			return nil
 		}
@@ -366,7 +366,7 @@ func (lc *HelmDownloader) lookupChart() error {
 	})
 
 	if res == "" {
-		return fmt.Errorf("%w: %q", ErrNoChartDirFound, lc.DownChartDir)
+		return fmt.Errorf("%w: %q", ErrNoChartDirFound, lc.downChartDir)
 	}
 
 	lc.log.Printf("Chart directory found in %q", res)
@@ -380,4 +380,8 @@ func (lc *HelmDownloader) lookupChart() error {
 	lc.downChart = chart
 	lc.downChartFile = chartFile
 	return nil
+}
+
+func (lc HelmDownloader) GetChartDirectory() string {
+	return filepath.Dir(lc.downChartFile)
 }

@@ -114,7 +114,7 @@ func NewHelmManager(options HelmManagerOptions) (HelmManager, error) {
 
 // GetManagerFor returns a helm chart manager for the chart we have downloaded
 func (lc *HelmManager) GetManagerFor(o *unstructured.Unstructured, values HelmValuesStrings) (release.Manager, error) {
-	factory := release.NewManagerFactory(lc.mgr, lc.DownChartDir)
+	factory := release.NewManagerFactory(lc.mgr, lc.GetChartDirectory())
 
 	// create a copy of the object. we will use this one for creating the manager.
 	var oc unstructured.Unstructured
