@@ -8,7 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	"github.com/datawire/ambassador/pkg/helm"
+	"github.com/datawire/ambassador-operator/pkg/helm"
 )
 
 const (
@@ -90,31 +90,31 @@ type HelmValuesStrings map[string]string
 // HelmManager is a remote Helm repo or a file, provided with an URL
 type HelmManager struct {
 	mgr manager.Manager
-	helm.HelmDownloader
+	helm.Downloader
 }
 
 type HelmManagerOptions struct {
 	Manager manager.Manager
-	helm.HelmDownloaderOptions
+	helm.DownloaderOptions
 }
 
 // NewHelmManager creates a new charts manager
 // The Helm Manager will use the URL provided, and download (lazily) a Chart that
 // obeys the Version Rule.
 func NewHelmManager(options HelmManagerOptions) (HelmManager, error) {
-	downloader, err := helm.NewHelmDownloader(options.HelmDownloaderOptions)
+	downloader, err := helm.NewDownloader(options.DownloaderOptions)
 	if err != nil {
 		return HelmManager{}, err
 	}
 	return HelmManager{
-		mgr:            options.Manager,
-		HelmDownloader: downloader,
+		mgr:        options.Manager,
+		Downloader: downloader,
 	}, nil
 }
 
 // GetManagerFor returns a helm chart manager for the chart we have downloaded
 func (lc *HelmManager) GetManagerFor(o *unstructured.Unstructured, values HelmValuesStrings) (release.Manager, error) {
-	factory := release.NewManagerFactory(lc.mgr, lc.DownChartDir)
+	factory := release.NewManagerFactory(lc.mgr, lc.GetChartDirectory())
 
 	// create a copy of the object. we will use this one for creating the manager.
 	var oc unstructured.Unstructured

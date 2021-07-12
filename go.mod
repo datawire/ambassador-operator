@@ -3,12 +3,13 @@ module github.com/datawire/ambassador-operator
 go 1.13
 
 require (
+	github.com/Masterminds/semver v1.5.0
 	github.com/datawire/ambassador v1.4.2-0.20200421104605-233f33a2e1c4
-	github.com/go-test/deep v1.0.6
 	github.com/google/uuid v1.1.1
 	github.com/gorhill/cronexpr v0.0.0-20180427100037-88b0669f7d75
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/kr/text v0.2.0 // indirect
+	github.com/mholt/archiver/v3 v3.3.0
 	github.com/operator-framework/operator-sdk v0.15.0
 	github.com/pkg/errors v0.8.1
 	github.com/rogpeppe/go-internal v1.5.2 // indirect
@@ -23,7 +24,8 @@ require (
 	k8s.io/apimachinery v0.17.1
 	k8s.io/cli-runtime v0.17.1 // indirect
 	k8s.io/client-go v12.0.0+incompatible
-	k8s.io/kubectl v0.17.1
+	k8s.io/helm v2.16.5+incompatible
+	k8s.io/kubectl v0.17.1 // indirect
 	sigs.k8s.io/controller-runtime v0.4.0
 )
 
