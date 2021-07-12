@@ -13,4 +13,4 @@ source "$COMMON_FILE"
 set -eu
 
 info "(running 'operator-sdk build' for $1)"
-${TOP_DIR}/bin/operator-sdk build $1
+${TOP_DIR}/bin/operator-sdk build --verbose $1

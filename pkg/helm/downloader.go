@@ -30,6 +30,10 @@ const (
 
 	// The default chart name
 	DefaultChartName = "ambassador"
+
+	// for 2.0
+	DefaultEmissaryChartName  = "emissary-ingress"
+	DefaultEdgeStackChartName = "edge-stack"
 )
 
 var (
@@ -81,7 +85,8 @@ type Downloader struct {
 	URL     *url.URL
 	Version ChartVersionRule
 
-	KubeInfo *k8s.KubeInfo
+	KubeInfo  *k8s.KubeInfo
+	ChartName string
 
 	// The chart downloaded (the Chart.yaml file as well as the metadata)
 	downChartFile string
@@ -96,16 +101,20 @@ type Downloader struct {
 
 // DownloaderOptions specifies options for creating the Helm manager
 type DownloaderOptions struct {
-	URL      string
-	KubeInfo *k8s.KubeInfo
-	Version  ChartVersionRule
-	Logger   *log.Logger
+	URL       string
+	KubeInfo  *k8s.KubeInfo
+	Version   ChartVersionRule
+	Logger    *log.Logger
+	ChartName string
 }
 
 // NewDownloader creates a new charts manager
 // The Helm Manager will use the URL provided, and download (lazily) a Chart that
 // obeys the Version Rule.
 func NewDownloader(options DownloaderOptions) (Downloader, error) {
+	if options.ChartName == "" {
+		options.ChartName = DefaultChartName
+	}
 	// process the URL, using the default URL when not provided
 	if options.URL == "" {
 		options.URL = DefaultHelmRepoURL
@@ -120,10 +129,11 @@ func NewDownloader(options DownloaderOptions) (Downloader, error) {
 	}
 
 	return Downloader{
-		URL:      pu,
-		KubeInfo: options.KubeInfo,
-		Version:  options.Version,
-		log:      options.Logger,
+		URL:       pu,
+		KubeInfo:  options.KubeInfo,
+		Version:   options.Version,
+		log:       options.Logger,
+		ChartName: options.ChartName,
 	}, nil
 }
 
@@ -235,7 +245,7 @@ func (lc *Downloader) downloadChartFile(url *url.URL) error {
 }
 
 func (lc *Downloader) findInRepo() (*url.URL, error) {
-	chartName := DefaultChartName
+	chartName := lc.ChartName
 	repoURL := lc.URL.String()
 
 	// Download and write the index file to a temporary location

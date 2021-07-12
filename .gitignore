@@ -11,6 +11,7 @@
 auto-save-list
 tramp
 .\#*
+bin/operator-sdk
 
 ### Go ###
 # Binaries for programs and plugins
