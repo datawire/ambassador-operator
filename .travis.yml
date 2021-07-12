@@ -52,20 +52,23 @@ jobs:
         - CLUSTER_PROVIDER="gke"
         - CLUSTER_MACHINE="e2-standard-8"
         - CLUSTER_REUSE=1
-      script: make ci/cluster-setup ci/e2e
+        - CLUSTER_VERSION=1.19.11-gke.2100
+      script: make ci/cluster-setup && make ci/e2e
 
-    - name: "e2e tests in Azure (AKS)"
-      # Run on cron jobs, tagged releases or any builds where commit message contains "test-azure"
-      if: (type IN (cron, api) OR (tag =~ ^v) OR (commit_message =~ test-azure) OR (commit_message =~ test-cloud)) AND NOT (commit_message =~ skip-test OR commit_message =~ skip-azure OR commit_message =~ skip-cloud)
-      env:
-        - CLUSTER_PROVIDER="azure"
-        - CLUSTER_REUSE=1
-      script: make ci/cluster-setup ci/e2e
+    # TODO: Azure credentials need to be updated. I, acookin, do not have the privs one needs to do this.
+    # See: https://github.com/datawire/cluster-providers/blob/a69bba7d368815824e1423a9baf8dc356c92c370/CREDENTIALS.md
+    #- name: "e2e tests in Azure (AKS)"
+      ## Run on cron jobs, tagged releases or any builds where commit message contains "test-azure"
+      #if: (type IN (cron, api) OR (tag =~ ^v) OR (commit_message =~ test-azure) OR (commit_message =~ test-cloud)) AND NOT (commit_message =~ skip-test OR commit_message =~ skip-azure OR commit_message =~ skip-cloud)
+      #env:
+        #- CLUSTER_PROVIDER="azure"
+        #- CLUSTER_REUSE=1
+      #script: make ci/cluster-setup && make ci/e2e
 
     - name: "e2e tests in a local (1 node) Kubernetes cluster (k3d)"
       if: NOT (commit_message =~ skip-test)
       env: CLUSTER_PROVIDER="k3d"
-      script: make ci/cluster-setup ci/e2e
+      script: make ci/cluster-setup && make ci/e2e
 
     #####################################################
     # stage 3: push images
