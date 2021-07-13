@@ -20,7 +20,6 @@ jobs:
         name: "Install go (^1.13.0)"
       - run: go version
         name: "Check go version"
-        name: "Install gotestsum (latest)"
       - name: "Setup CI"
         run: make ci/setup
       - name: "Lint and unit tests"
