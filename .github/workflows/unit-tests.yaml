@@ -21,3 +21,11 @@ jobs:
         name: "Check go version"
       - name: "Lint and unit tests"
         run: PATH=${PATH}:${HOME}/bin make BUILD_VERBOSE=1 ci/setup && PATH=${PATH}:${HOME}/bin make BUILD_VERBOSE=1 ci/check-format-gen ci/lint ci/build ci/test
+      - name: "Dirty Check"
+        run: |
+          git add .
+          if [[ -n "$(git status --porcelain)" ]]; then
+             PAGER= git diff --cached
+             exit 1
+          fi
+
