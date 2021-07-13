@@ -13,6 +13,8 @@ jobs:
     name: e2e-tests
     steps:
       - uses: actions/checkout@v2
+        with:
+          submodules: 'true'
       - uses: actions/setup-go@v2
         with:
           go-version: '^1.13.0' # The Go version to download (if necessary) and use.
