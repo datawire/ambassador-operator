@@ -39,7 +39,7 @@ info "Installing gen-crd-api-reference-docs (from $GEN_CRD_DOCS_URL)..."
 curl -o gen.zip -L "$GEN_CRD_DOCS_URL" &&
 	unzip -xU gen.zip &&
 	cd gen-crd-api-reference-* &&
-	go install . &&
+	go install . && cd .. &&
 	rm -rf gen-crd-api-reference-* gen.zip || abort "could not install gen-crd-api-reference-docs"
 passed "... gen-crd-api-reference-docs installed successfully"
 
