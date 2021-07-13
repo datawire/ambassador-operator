@@ -131,7 +131,8 @@ format: ## Format the Go source code
 	$(Q)go fmt $(AMB_OPER_PKGS)
 
 format-sh:  ## Format the Shell source code
-	$(Q)command -v shfmt >/dev/null && shfmt $(SHFMT_ARGS) -w $(AMB_OPER_SHS)
+	$(Q)command -v shfmt
+	$(Q)shfmt $(SHFMT_ARGS) -w $(AMB_OPER_SHS)
 
 tidy: ## Update dependencies
 	$(Q)go mod tidy -v
