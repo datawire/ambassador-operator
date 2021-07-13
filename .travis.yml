@@ -37,45 +37,44 @@ jobs:
     #####################################################
     - stage: Build, lint and unit tests
       name: "Build, lint and unit tests"
-      script: make ci/check-format-gen ci/lint ci/build ci/test
+      script: ls -alF
 
     #####################################################
     # stage 2: end-to-end tests in multiple clouds
     #####################################################
 
     # see the ci/infra/providers/CREDENTIALS.md for details on the credentials
-    - stage: End-to-end tests
-      name: "e2e tests in Google Cloud (GKE)"
-      # Run on cron jobs, tagged releases or any builds where commit message contains "test-gke"
-      if: (type IN (cron, api) OR (tag =~ ^v) OR (commit_message =~ test-gke) OR (commit_message =~ test-cloud)) AND NOT (commit_message =~ skip-test OR commit_message =~ skip-gke OR commit_message =~ skip-cloud)
-      env:
-        - CLUSTER_PROVIDER="gke"
-        - CLUSTER_MACHINE="e2-standard-8"
-        - CLUSTER_REUSE=1
-        - CLUSTER_VERSION=1.19.11-gke.2100
-      script: make ci/cluster-setup && make ci/e2e
-
-    # TODO: Azure credentials need to be updated. I, acookin, do not have the privs one needs to do this.
-    # See: https://github.com/datawire/cluster-providers/blob/a69bba7d368815824e1423a9baf8dc356c92c370/CREDENTIALS.md
-    #- name: "e2e tests in Azure (AKS)"
-      ## Run on cron jobs, tagged releases or any builds where commit message contains "test-azure"
-      #if: (type IN (cron, api) OR (tag =~ ^v) OR (commit_message =~ test-azure) OR (commit_message =~ test-cloud)) AND NOT (commit_message =~ skip-test OR commit_message =~ skip-azure OR commit_message =~ skip-cloud)
+    #- stage: End-to-end tests
+      #name: "e2e tests in Google Cloud (GKE)"
+      ## Run on cron jobs, tagged releases or any builds where commit message contains "test-gke"
+      #if: (type IN (cron, api) OR (tag =~ ^v) OR (commit_message =~ test-gke) OR (commit_message =~ test-cloud)) AND NOT (commit_message =~ skip-test OR commit_message =~ skip-gke OR commit_message =~ skip-cloud)
       #env:
-        #- CLUSTER_PROVIDER="azure"
+        #- CLUSTER_PROVIDER="gke"
+        #- CLUSTER_MACHINE="e2-standard-8"
         #- CLUSTER_REUSE=1
+        #- CLUSTER_VERSION=1.19.11-gke.2100
       #script: make ci/cluster-setup && make ci/e2e
 
-    - name: "e2e tests in a local (1 node) Kubernetes cluster (k3d)"
-      if: NOT (commit_message =~ skip-test)
-      env: CLUSTER_PROVIDER="k3d"
-      script: make ci/cluster-setup && make ci/e2e
+    ## TODO: Azure credentials need to be updated. I, acookin, do not have the privs one needs to do this.
+    ## See: https://github.com/datawire/cluster-providers/blob/a69bba7d368815824e1423a9baf8dc356c92c370/CREDENTIALS.md
+    ##- name: "e2e tests in Azure (AKS)"
+      ### Run on cron jobs, tagged releases or any builds where commit message contains "test-azure"
+      ##if: (type IN (cron, api) OR (tag =~ ^v) OR (commit_message =~ test-azure) OR (commit_message =~ test-cloud)) AND NOT (commit_message =~ skip-test OR commit_message =~ skip-azure OR commit_message =~ skip-cloud)
+      ##env:
+        ##- CLUSTER_PROVIDER="azure"
+        ##- CLUSTER_REUSE=1
+      ##script: make ci/cluster-setup && make ci/e2e
+
+    #- name: "e2e tests in a local (1 node) Kubernetes cluster (k3d)"
+      #if: NOT (commit_message =~ skip-test)
+      #env: CLUSTER_PROVIDER="k3d"
+      #script: make ci/cluster-setup && make ci/e2e
 
     #####################################################
     # stage 3: push images
     #####################################################
     - stage: Push images to repositories
       name: "Push images to repositories"
-      if: (branch =~ ^v) AND (tag =~ ^v) AND (type != pull_request) AND NOT (commit_message =~ skip-push)
       env:
         - AMB_OPER_IMAGE_TAG="$TRAVIS_TAG"
       deploy:
@@ -84,32 +83,17 @@ jobs:
         - provider: script
           on:
             all_branches: true
-          script: REL_REGISTRY="docker.io/datawire" make ci/publish-image
+          script: ls -alF
 
           # publish images to Quay.io
           # NOTE: make sure DOCKER_USERNAME/DOCKER_PASSWORD have values for a bot
           #       (from https://quay.io/repository/datawire/ambassador-operator?tab=settings)
-        - provider: script
-          on:
-            all_branches: true
-          script: DOCKER_USERNAME="$QUAY_USERNAME" DOCKER_PASSWORD="$QUAY_PASSWORD" REL_REGISTRY="quay.io/datawire" make ci/publish-image
-
-        - provider: script
-          on:
-            all_branches: true
-          script: GKE_AUTH="$GCR_AUTH" CLUSTER_PROVIDER="gke" CLUSTER_REGISTRY="datawire" make ci/cluster-setup ci/publish-image-cloud/gcr
-
-        - provider: script
-          on:
-            all_branches: true
-          script: CLUSTER_PROVIDER="azure" CLUSTER_REGISTRY="datawire" AZ_RES_GRP="DefaultResourceGroup-EUS" make ci/cluster-setup ci/publish-image-cloud/azure
 
     #####################################################
     # stage 4: publish artifacts
     #####################################################
     - stage: Publish artifacts
       name: "Publish artifacts"
-      if: (branch =~ ^v) AND (tag =~ ^v) AND (type != pull_request) AND NOT (commit_message =~ skip-publish)
       env:
         - AMB_OPER_IMAGE_TAG="$TRAVIS_TAG"
         - REL_REGISTRY="docker.io/datawire"
@@ -117,37 +101,9 @@ jobs:
         - provider: script
           on:
             all_branches: true
-          script: make ci/release
+          script: ls -alF
         # publish YAMLs to GitHub releases
         # `make ci/release` should have left everything in build/artifacts/*
-        - provider: releases
-          on:
-            all_branches: true
-          api_key:
-            secure: XFAZ+q3B7TL7ae0lK6Nl4RCkYxknZ0gZ44g/aR5zOcTkAuJ9049vOUol7UQT9ZyRMMOigfma5IQRFqcQlHBPnBRGkuHFGqxx48Kw1pvLRR3BhIYG0aSyDR3ZnI0eEkaKzui1zKBC5R03DK1NpVl+muomNDWgsEb9M9qn7onYQPMfCi4ZZ8x/ev5GtXlHPrCh4O/m51X0nLoVMsvFaogNiiwKtS/sWlLTiY9DWwACF5yY58Q65l3GNiLaIQCIvdU3losq08KJViIE8qBNojCRr+zLXluOlpgVb7ozZ3vWNephuHZoRIvW8hH8MTgaiuDh+XGlbTNlLBrJAF43CPZLQdzZdLMp74XRx90OkXHA8p6crBoQRa5Q7/MhV0pswdMcSKnHIe9dRkkPiGmDGXFg5WAchI6egGskAD4SAZMmiXBoj8TcjtyDa4NExakebrrU/XzvU951teAk2czNs1yoXTDfrpgDiIfI7PaIXgUGJi8VjkuwgSZ8uU1EQNwrvhikngbtFKnzM7I2KGr3nIE9cTxxo81PWoElrGAarArQZjARJp1z2myTqPiUi3FcvFOmaeOZbTvHc2kt2Z5iZCJ4Np/YwmXL7pCjijxbb8MB6MrQLv96woX0do/lDDsq8tXrRRoxGqpRzvBtLWHVMw55aKrbnvfnic1HGwyMZnFex+E=
-          file_glob: true
-          file: build/artifacts/*
-          skip_cleanup: true
-        # publish helm chart
-        # NOTE: needs AWS_ACCESS_KEY_ID, AWS_BUCKET and AWS_SECRET_ACCESS_KEY (from keybase)
-        - provider: script
-          on:
-            all_branches: true
-          script: make ci/cluster-setup ci/publish-chart
-
-    #####################################################
-    # stage 5: smoke tests
-    #####################################################
-    - stage: Smoke tests
-      name: "Smoke tests"
-      if: (commit_message =~ test-smoke) OR ((branch =~ ^v) AND (tag =~ ^v) AND NOT (commit_message =~ skip-smoke))
-      on:
-        all_branches: true
-      env:
-        - AMB_OPER_IMAGE_TAG="$TRAVIS_TAG"
-      script:
-        - CLUSTER_PROVIDER="" make ci/smoke-tests/minikube
-        - CLUSTER_PROVIDER="kind" make ci/cluster-setup ci/smoke-tests/kind
 
 after_success:
   - make ci/after-success
