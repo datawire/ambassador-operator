@@ -20,4 +20,4 @@ jobs:
       - run: go version
         name: "Check go version"
       - name: "Lint and unit tests"
-        run: make BUILD_VERBOSE=1 ci/setup && make BUILD_VERBOSE=1 ci/check-format-gen ci/lint ci/build ci/test
+        run: PATH=${PATH}:${HOME}/bin make BUILD_VERBOSE=1 ci/setup && PATH=${PATH}:${HOME}/bin make BUILD_VERBOSE=1 ci/check-format-gen ci/lint ci/build ci/test
