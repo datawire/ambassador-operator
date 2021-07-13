@@ -131,7 +131,6 @@ format: ## Format the Go source code
 	$(Q)go fmt $(AMB_OPER_PKGS)
 
 format-sh:  ## Format the Shell source code
-	$(Q)command -v shfmt
 	$(Q)shfmt $(SHFMT_ARGS) -w $(AMB_OPER_SHS)
 
 tidy: ## Update dependencies
@@ -183,11 +182,6 @@ gen-crds:  $(TOP_DIR)/bin/operator-sdk ## Generate CRDs manifests from CRD defin
 # needs `go get github.com/ahmetb/gen-crd-api-reference-docs`
 gen-crds-docs: ## Generate the docs for the CRDs
 	@echo ">>> Generating API docs..."
-	$(Q)command -v gen-crd-api-reference-docs >/dev/null || { \
-  		echo "FATAL: gen-crd-api-reference-docs not installed" ; \
-  		echo "FATAL: just run 'go get $(GEN_CRD_API_REPO)'" ; \
-  		exit 1 ; \
-  	}
 	$(Q)gen-crd-api-reference-docs \
             -template-dir "$(DOCS_API_DIR)/templates" \
             -config "$(DOCS_API_DIR)/templates/crds-gen-config.json" \
