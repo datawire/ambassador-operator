@@ -27,6 +27,7 @@ passed "... golangci-lint installed successfully"
 
 info "Installing shfmt..."
 download_exe "$EXE_SHFMT" "$EXE_SHFMT_URL" || abort "could not install shfmt"
+which shfmt
 passed "... shfmt installed successfully"
 
 info "Installing Helm..."

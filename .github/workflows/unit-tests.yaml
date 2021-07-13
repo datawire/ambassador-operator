@@ -4,7 +4,6 @@ on:
       - v*
     branches:
       - master
-      - main
   pull_request:
 
 jobs:
@@ -21,6 +20,6 @@ jobs:
       - run: go version
         name: "Check go version"
       - name: "Setup CI"
-        run: make ci/setup
+        run: make BUILD_VERBOSE=1 ci/setup
       - name: "Lint and unit tests"
-        run: make ci/check-format-gen ci/lint ci/build ci/test
+        run: make BUILD_VERBOSE=1 ci/check-format-gen ci/lint ci/build ci/test
