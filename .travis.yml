@@ -28,7 +28,7 @@ cache:
 
 install:
   - export PATH=~/bin:$PATH
-  - make ci/setup
+  - ls -alF
 
 jobs:
   include:
