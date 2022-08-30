@@ -5,27 +5,18 @@ go 1.13
 require (
 	github.com/Masterminds/semver v1.5.0
 	github.com/datawire/ambassador v1.4.2-0.20200421104605-233f33a2e1c4
-	github.com/google/uuid v1.1.1
+	github.com/google/uuid v1.2.0
 	github.com/gorhill/cronexpr v0.0.0-20180427100037-88b0669f7d75
-	github.com/kr/pretty v0.2.0 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/mholt/archiver/v3 v3.3.0
 	github.com/operator-framework/operator-sdk v0.15.0
-	github.com/pkg/errors v0.8.1
-	github.com/rogpeppe/go-internal v1.5.2 // indirect
+	github.com/pkg/errors v0.9.1
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/net v0.0.0-20200202094626-16171245cfb2 // indirect
-	golang.org/x/sys v0.0.0-20200217220822-9197077df867 // indirect
-	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
-	gopkg.in/yaml.v2 v2.2.4
-	helm.sh/helm/v3 v3.0.3
-	k8s.io/api v0.17.1
-	k8s.io/apiextensions-apiserver v0.17.1 // indirect
-	k8s.io/apimachinery v0.17.1
-	k8s.io/cli-runtime v0.17.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0
+	helm.sh/helm/v3 v3.9.4
+	k8s.io/api v0.24.2
+	k8s.io/apimachinery v0.24.2
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/helm v2.16.5+incompatible
-	k8s.io/kubectl v0.17.1 // indirect
 	sigs.k8s.io/controller-runtime v0.4.0
 )
 
