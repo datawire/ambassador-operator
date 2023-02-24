@@ -14,8 +14,7 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/rogpeppe/go-internal v1.5.2 // indirect
 	github.com/spf13/pflag v1.0.5
-	golang.org/x/net v0.0.0-20200202094626-16171245cfb2 // indirect
-	golang.org/x/sys v0.0.0-20200217220822-9197077df867 // indirect
+	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 // indirect
 	gopkg.in/yaml.v2 v2.2.4
 	helm.sh/helm/v3 v3.0.3
